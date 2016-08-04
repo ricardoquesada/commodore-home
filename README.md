@@ -3,12 +3,12 @@
 
 Don't buy expensive "smart" WiFi bulbs!!
 
-Instead get the C64 Intelligent Dimmer for IoT (ID-IoT)
+Instead get the C64 Intelligent Dimmer for IoT (I.D.I.o.T)
 
-The C64 ID-IoT allows you to reuse your existing dimmer switches
+The C64 I.D.I.o.T allows you to reuse your existing dimmer switches
 whislt still having all the benefits of the "IoT" platform.
 
-The C64 ID-IoT uses the UniJoystiCle framekwork to control existing dimmers
+The C64 I.D.I.o.T uses the UniJoystiCle framekwork to control existing dimmers
 from your smartphone.
 
 
