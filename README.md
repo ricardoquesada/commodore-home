@@ -8,7 +8,7 @@ Instead get the C64 Intelligent Dimmer for IoT (I.D.I.o.T)
 The C64 I.D.I.o.T allows you to reuse your existing dimmer switches
 whislt still having all the benefits of the "IoT" platform.
 
-The C64 I.D.I.o.T uses the UniJoystiCle framekwork to control existing dimmers
+The C64 I.D.I.o.T uses the [UniJoystiCle](http://retro.moe/unijoysticle) framekwork to control existing dimmers
 from your smartphone.
 
 
@@ -23,6 +23,16 @@ from your smartphone.
 
 Easy and Smart!
 
+## Source Code
+
+The C64-IDIoT was coded in BASIC inside the C64. So, in order to get the source code, just load the [c64-idiot.prg](https://github.com/ricardoquesada/c64-idiot/raw/master/c64-idiot.prg) in the C64 and type `LIST`.
+ex: 
+```
+LOAD"C64-IDIOT",8
+LIST
+```
+
+The C64
 
 ## License
 
