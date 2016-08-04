@@ -32,8 +32,6 @@ LOAD"C64-IDIOT",8
 LIST
 ```
 
-The C64
-
 ## License
 
 Apache License v2.0
