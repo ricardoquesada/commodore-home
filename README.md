@@ -25,12 +25,7 @@ Easy and Smart!
 
 ## Source Code
 
-The C64-IDIoT was coded in BASIC inside the C64. So, in order to get the source code, just load the [c64-idiotr.prg](https://github.com/ricardoquesada/c64-idiotr/raw/master/c64-idiotr.prg) in the C64 and type `LIST`.
-ex:
-```
-LOAD"C64-IDIOTR",8
-LIST
-```
+It was coded in C64 BASIC v2. Just open the [c64-idiotr.bas](c64-idiotr.bas) file.
 
 ## License
 
