@@ -4,10 +4,14 @@
 
 X64 = x64
 
-all: bin
+all: data bin
 bin: c_home run
 
-SRC=src/c_home.s
+SRC=src/c_home.s src/exodecrunch.s
+
+data:
+	cp res/mainscreen-*.bin src/
+	exomizer mem -o src/mainscreen-map.bin.exo res/mainscreen-map.prg
 
 c_home: ${SRC}
 	echo "Compiling..."

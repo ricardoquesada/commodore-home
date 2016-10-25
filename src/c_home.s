@@ -10,6 +10,12 @@
 .macpack cbm                            ; adds support for scrcode
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; Imports/Exports
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.import decrunch                        ; exomizer decrunch
+.export get_crunched_byte               ; needed for exomizer decruncher
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 ; Constants
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 .include "c64.inc"                      ; c64 constants
@@ -19,17 +25,15 @@
 .proc main
         sei
 
+        lda #$35
+        sta $01                         ; no basic/kernal
+
         ldx #$ff                        ; reset stack... just in case
         txs
 
         lda #0
         sta $d01a                       ; no raster interrups
 
-
-        lda #0
-        sta $d020                       ; border color
-        lda #0
-        sta $d021                       ; background color
 
         lda #$00                        ; background & border color
         sta $d020
@@ -47,44 +51,52 @@
         sta SID_Amp
                                         ; multicolor mode + extended color causes
 
-                                        ; turn VIC on again
-        lda #%00011011                  ; charset mode, default scroll-Y position, 25-rows
-        sta $d011                       ; extended color mode: off
+        jsr init_screen
 
-        lda #%00001000                  ; no scroll, hires (mono color), 40-cols
-        sta $d016                       ; turn off multicolor
+        cli
 
-        lda #%00011110                  ; charset at $3800
-        sta $d018
+main_loop:
+        jmp main_loop
+.endproc
 
-        lda $dd00                       ; Vic bank 0: $0000-$3FFF
-        and #$fc
-        ora #3
-        sta $dd00
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; init_screen
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.proc init_screen
+                                        ; turn off video
+        lda #%01011011                  ; the bug that blanks the screen
+        sta $d011                       ; extended color mode: on
+        lda #%00011000
+        sta $d016                       ; turn on multicolor
 
+        dec $01                         ; $34: RAM 100%
 
-        ldx #0
-l1:
-        lda screen + $0000,x
-        sta $0400 + $0000,x
+        ldx #<screen_ram_eod            ; decrunch in $0400
+        ldy #>screen_ram_eod
+        stx _crunched_byte_lo
+        sty _crunched_byte_hi
+        jsr decrunch
+
+        inc $01                         ; $35: RAM + IO ($D000-$DFFF)
+
+        ldx #0                          ; read data from $0400
+l1:                                     ; and update the color ram
+        lda $0400 + $0000,x
         tay
         lda screen_colors,y
         sta $d800 + $0000,x
 
-        lda screen + $0100,x
-        sta $0400 + $0100,x
+        lda $0400 + $0100,x
         tay
         lda screen_colors,y
         sta $d800 + $0100,x
 
-        lda screen + $0200,x
-        sta $0400 + $0200,x
+        lda $0400 + $0200,x
         tay
         lda screen_colors,y
         sta $d800 + $0200,x
 
-        lda screen + $02e8,x
-        sta $0400 + $02e8,x
+        lda $0400 + $02e8,x
         tay
         lda screen_colors,y
         sta $d800 + $02e8,x
@@ -92,146 +104,130 @@ l1:
         inx
         bne l1
 
-        jsr init_sprites
+        lda $dd00                       ; Vic bank 0: $0000-$3FFF
+        and #$fc
+        ora #3
+        sta $dd00
 
-        cli
-
-main_loop:
-        jsr print_joy1
-        jsr print_joy2
-        jmp main_loop
-.endproc
-
-.proc init_sprites
-
-        ldx #192                ; setup sprite frames
-        stx $07f8
-        stx $07fc
-
-        inx
-        stx $07f9
-        stx $07fd
-
-        inx
-        stx $07fa
-        stx $07fe
-
-        inx
-        stx $07fb
-        stx $07ff
-
-        ldx #7
-        ldy #14
-l1:
-        lda #1                          ; setup sprite colors
-        sta VIC_SPR0_COLOR,x
-
-        lda posx,x
-        sta VIC_SPR0_X,y
-        lda posy,x
-        sta VIC_SPR0_Y,y
-
-        dey
-        dey
-        dex
-        bpl l1
-
-        lda #%11111111
-        sta VIC_SPR_ENA
-
-        lda #0
-        sta VIC_SPR_EXP_X               ; no expansion
-        sta VIC_SPR_EXP_Y
-        sta VIC_SPR_MCOLOR              ; no multicolor
-
-        rts
-
-OFFX = 20
-OFFY = 50
-posx:
-        .byte 12*8 + OFFX               ; sprite 0
-        .byte 12*8 + OFFX               ; 1
-        .byte  9*8 + OFFX               ; 2
-        .byte 14*8 + OFFX               ; 3
-
-        .byte 27*8 + OFFX
-        .byte 27*8 + OFFX
-        .byte 24*8 + OFFX
-        .byte 29*8 + OFFX
-posy:
-        .byte 16*8 + OFFY               ; sprite 0
-        .byte 21*8 + OFFY               ; 1
-        .byte 19*8 + OFFY               ; 2
-        .byte 19*8 + OFFY               ; 3
-
-        .byte 16*8 + OFFY
-        .byte 21*8 + OFFY
-        .byte 19*8 + OFFY
-        .byte 19*8 + OFFY
-
-.endproc
-
-.proc print_joy1
-        lda $dc01                       ; joy #1
-        eor #%00011111
-        sta $f9                         ; tmp
-        and #%00001111
-        sta $f8                         ; tmp
-
-        lda VIC_SPR_ENA
-        and #%11110000
-        ora $f8
-        sta VIC_SPR_ENA
-
-        lda $f9
-        and #%00010000                  ; fire?
-        beq no_fire
-        lda #1
-        bne print_fire
-no_fire:
-        lda #11
-print_fire:
-        sta $d800 + 40 * 19 + 12
+        lda #%00011110                  ; charset at $3800, screen at $0400
+        sta $d018
+                                        ; turn VIC on again
+        lda #%00011011                  ; charset mode, default scroll-Y position, 25-rows
+        sta $d011                       ; extended color mode: off
+        lda #%00001000                  ; no scroll, hires (mono color), 40-cols
+        sta $d016                       ; turn off multicolor
 
         rts
 .endproc
 
-.proc print_joy2
-        lda $dc00                       ; joy #1
-        eor #%00011111
-        sta $f9
-        asl
-        asl
-        asl
-        asl
-        sta $f8                         ; tmp
-
-        lda VIC_SPR_ENA
-        and #%00001111
-        ora $f8
-        sta VIC_SPR_ENA
-
-        lda $f9
-        and #%00010000                  ; fire?
-        beq no_fire
-        lda #1
-        bne print_fire
-no_fire:
-        lda #11
-print_fire:
-        sta $d800 + 40 * 19 + 27
-
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; init_crunch_data
+; initializes the data needed by get_crunched_byte
+; entry:
+;       x = index of the table (current song * 2)
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.proc init_crunch_data
+        lda song_end_addrs,x
+        sta _crunched_byte_lo
+        lda song_end_addrs+1,x
+        sta _crunched_byte_hi
         rts
 .endproc
 
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; get_crunched_byte
+; The decruncher jsr:s to the get_crunched_byte address when it wants to
+; read a crunched byte. This subroutine has to preserve x and y register
+; and must not modify the state of the carry flag.
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+get_crunched_byte:
+        lda _crunched_byte_lo
+        bne @byte_skip_hi
+        dec _crunched_byte_hi
+@byte_skip_hi:
 
-screen:
-        .incbin "unijoysticle-map.bin"
+        dec _crunched_byte_lo
+_crunched_byte_lo = * + 1
+_crunched_byte_hi = * + 2
+        lda song_end_addrs              ; self-modyfing. needs to be set correctly before
+        rts                             ; decrunch_file is called.
+
+; song order
+; 1, 2, 3, 4, 5, 6, 7
+song_names:
+        .addr song_1_name
+        .addr song_2_name
+        .addr song_3_name
+        .addr song_4_name
+        .addr song_5_name
+        .addr song_6_name
+TOTAL_SONGS = (* - song_names) / 2
+
+song_end_addrs:
+        .addr song_1_eod
+        .addr song_2_eod
+        .addr song_3_eod
+        .addr song_4_eod
+        .addr song_5_eod
+        .addr song_6_eod
+
+song_durations:                                 ; measured in "cycles ticks"
+        .word (3*60+13) * 50                    ; #1 3:13
+        .word (3*60+31) * 50                    ; #2 3:31
+        .word (2*60+25) * 50                    ; #3 2:25
+        .word (2*60+30) * 50                    ; #4 2:30
+        .word (3*60+04) * 50                    ; #5 3:04
+        .word (3*60+51) * 50                    ; #6 3:51
+
+song_1_name:
+        scrcode "Carito"
+        .byte $ff
+song_2_name:
+        scrcode "Pop Goes The World"
+        .byte $ff
+song_3_name:
+        scrcode "Droga Cumbia"
+        .byte $ff
+song_4_name:
+        scrcode "Mama Killa"
+        .byte $ff
+song_5_name:
+        scrcode "Paesaggio"
+        .byte $ff
+song_6_name:
+        scrcode "Supremacy"
+        .byte $ff
+
+
 screen_colors:
-        .incbin "unijoysticle-colors.bin"
+        .incbin "mainscreen-colors.bin"
 
-.segment "SPRITES"
-        .incbin "sprites.bin"
 
 .segment "CHARSET"
-        .incbin "unijoysticle-charset.bin"
+        .incbin "mainscreen-charset.bin"
+
+
+.segment "COMPRESSED"
+.incbin "Carito.exo"
+song_1_eod:
+
+.incbin "Pop_Goes_the_World.exo"
+song_2_eod:
+
+.incbin "Drogacumbia.exo"
+song_3_eod:
+
+.incbin "Mama_Killa.exo"
+song_4_eod:
+
+.incbin "Paesaggio.exo"
+song_5_eod:
+
+.incbin "Supremacy.exo"
+song_6_eod:
+
+
+.incbin "mainscreen-map.bin.exo"
+screen_ram_eod:
+
+.byte 0                 ; ignore
