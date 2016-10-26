@@ -7,7 +7,7 @@ X64 = x64
 all: data bin
 bin: c_home run
 
-SRC=src/c_home.s src/exodecrunch.s
+SRC=src/c_home.s src/exodecrunch.s src/menu.s src/utils.s
 
 data:
 	cp res/mainscreen-*.bin src/
