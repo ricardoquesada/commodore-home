@@ -71,6 +71,7 @@
 
 main_loop:
         jsr menu_handle_events
+        jsr unijoysticle_handle_events
 
         lda sync_timer_irq
         beq main_loop
@@ -90,8 +91,27 @@ music_play_addr = * + 1
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; void unijoysticle_handle_events()
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.proc unijoysticle_handle_events
+        lda #%00011111
+        sta $dc00
+
+        lda $dc00
+        and #%00011111
+        eor #%00011111
+        asl
+        tax
+        lda uni_commands,x
+        sta $fa
+        lda uni_commands+1,x
+        sta $fb
+        jmp ($fa)
+.endproc
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 ; check_end_of_song
-;   if (song_tick >= song_durations[current_song]) do_next_song();
+;   if (song_tick >= song_durations[current_song]) do_song_next();
 ;   temp: uses $fc,$fd
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 .proc check_end_of_song
@@ -117,7 +137,7 @@ music_play_addr = * + 1
         bcc end           ; if LSB(song_tick) < LSB(song_duration) then
                           ;     song_tick < song_duration
 :
-        jsr do_next_song
+        jsr do_song_next
 end:
         rts
 .endproc
@@ -353,14 +373,14 @@ boot = *
 .proc main_song_exec
         lda MENU_CURRENT_ITEM
         bne :+
-        jmp do_stop_song
+        jmp do_song_stop
 
 :
         tax
         dex
         stx current_song
 
-        jmp do_play_song
+        jmp do_song_play
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
@@ -387,9 +407,66 @@ boot = *
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-; do_stop_song
+;
+; UniJoystiCle entry points
+;
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-.proc do_stop_song
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; do_nothing
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.proc do_nothing
+        rts
+.endproc
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; do_alarm_on
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.proc do_alarm_on
+        rts
+.endproc
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; do_alarm_off
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.proc do_alarm_off
+        rts
+.endproc
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; do_dimmer_?
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+do_dimmer_100:
+do_dimmer_75:
+do_dimmer_50:
+do_dimmer_25:
+do_dimmer_0:
+        rts
+
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; do_song_?
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+do_song_0:
+do_song_1:
+do_song_2:
+do_song_3:
+do_song_4:
+do_song_5:
+do_song_6:
+do_song_7:
+        txa                             ; (x*2)+1 is the song number, so reverse it
+        lsr                             ; now it is x+1
+        tax
+        dex                             ; now it is x. yay!
+
+        stx current_song
+        jmp do_song_play
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; do_song_stop
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.proc do_song_stop
         sei
 
         lda #$7f                        ; turn off cia interrups
@@ -408,23 +485,23 @@ boot = *
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-; do_pause_song
+; do_song_pause
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-.proc do_pause_song
+.proc do_song_pause
         rts
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-; do_resume_song
+; do_song_resume
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-.proc do_resume_song
+.proc do_song_resume
         rts
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-; do_next_song
+; do_song_next
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-.proc do_next_song
+.proc do_song_next
         ldx current_song
         inx
         cpx #TOTAL_SONGS
@@ -434,13 +511,13 @@ boot = *
 l0:
         stx current_song
 
-        jmp do_play_song
+        jmp do_song_play
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-; do_prev_song
+; do_song_prev
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-.proc do_prev_song
+.proc do_song_prev
         ldx current_song
         dex
         bpl l0
@@ -449,14 +526,14 @@ l0:
 l0:
         stx current_song
 
-        jmp do_play_song
+        jmp do_song_play
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-; do_play_song
+; do_song_play
 ; decrunches real song, and initializes white song
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-.proc do_play_song
+.proc do_song_play
         sei
 
         lda #0
@@ -522,6 +599,42 @@ menu_song_last_idx:     .byte 0
 menu_dimmer_last_idx:   .byte 0
 menu_light_last_idx:    .byte 0
 current_menu:           .byte 0
+
+
+uni_commands:
+        .addr do_nothing                ; 0
+        .addr do_song_0                 ; 1
+        .addr do_song_1                 ; 2
+        .addr do_song_2                 ; 3
+        .addr do_song_3                 ; 4
+        .addr do_song_4                 ; 5
+        .addr do_song_5                 ; 6
+        .addr do_song_6                 ; 7
+        .addr do_song_7                 ; 8
+        .addr do_song_stop              ; 9
+        .addr do_song_play              ; 10
+        .addr do_song_pause             ; 11
+        .addr do_song_resume            ; 12
+        .addr do_song_next              ; 13
+        .addr do_song_prev              ; 14
+        .addr do_dimmer_0               ; 15
+        .addr do_dimmer_25              ; 16
+        .addr do_dimmer_50              ; 17
+        .addr do_dimmer_75              ; 18
+        .addr do_dimmer_100             ; 19
+        .addr do_alarm_off              ; 20
+        .addr do_alarm_on               ; 21
+        .addr do_nothing                ; 22
+        .addr do_nothing                ; 23
+        .addr do_nothing                ; 24
+        .addr do_nothing                ; 25
+        .addr do_nothing                ; 26
+        .addr do_nothing                ; 27
+        .addr do_nothing                ; 28
+        .addr do_nothing                ; 29
+        .addr do_nothing                ; 30
+        .addr do_nothing                ; 31
+
 
 song_end_addrs:
         .addr song_1_eod
