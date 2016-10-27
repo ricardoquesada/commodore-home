@@ -25,6 +25,9 @@
 .include "c64.inc"                      ; c64 constants
 .include "myconstants.inc"
 
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; .segment "CODE"
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 .segment "CODE"
 
 .proc main
@@ -72,13 +75,50 @@ main_loop:
         beq main_loop
 
         dec sync_timer_irq
+
+music_play_addr = * + 1
         jsr MUSIC_PLAY
 
         inc song_tick
         bne :+
         inc song_tick+1
 :
+        jsr check_end_of_song
+
         jmp main_loop
+.endproc
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; check_end_of_song
+;   if (song_tick >= song_durations[current_song]) do_next_song();
+;   temp: uses $fc,$fd
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.proc check_end_of_song
+        lda current_song                ; x = current_song * 2
+        asl                             ; (song_durations is a word array)
+        tax
+
+        lda song_durations,x            ; pointer to song durations
+        sta $fc
+        lda song_durations+1,x
+        sta $fd
+
+        ; unsigned comparison per byte
+        lda song_tick+1   ; compare high bytes
+        cmp $fd
+        bcc end           ; if MSB(song_tick) < MSB(song_duration) then
+                          ;     song_tick < song_duration
+        bne :+            ; if MSB(song_tick) <> MSB(song_duration) then
+                          ;     song_tick > song_duration (so song_tick >= song_duration)
+
+        lda song_tick     ; compare low bytes
+        cmp $fc
+        bcc end           ; if LSB(song_tick) < LSB(song_duration) then
+                          ;     song_tick < song_duration
+:
+        jsr do_next_song
+end:
+        rts
 .endproc
 
 .segment "HICODE"
@@ -190,16 +230,16 @@ l1:                                     ; and update the color ram
 ; void main_init_menu()
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 .proc main_init_menu
-        lda #7                                  ; setup the global variables
+        lda #9                                  ; setup the global variables
         sta MENU_MAX_ITEMS                      ; needed for the menu code
         lda #0
         sta MENU_CURRENT_ITEM
-        lda #18
+        lda #25
         sta MENU_ITEM_LEN
         lda #40
         sta MENU_BYTES_BETWEEN_ITEMS
-        ldx #<(SCREEN0_BASE + 40 * 17 + 22)
-        ldy #>(SCREEN0_BASE + 40 * 17 + 22)
+        ldx #<(SCREEN0_BASE + 40 * 16 + 8)
+        ldy #>(SCREEN0_BASE + 40 * 16 + 8)
         stx MENU_CURRENT_ROW_ADDR
         sty MENU_CURRENT_ROW_ADDR+1
         ldx #<mainmenu_exec
@@ -223,7 +263,7 @@ l1:                                     ; and update the color ram
         dex
         stx current_song
 
-        jmp do_init_song
+        jmp do_play_song
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
@@ -251,10 +291,55 @@ l1:                                     ; and update the color ram
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-; do_init_song
+; do_pause_song
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.proc do_pause_song
+        rts
+.endproc
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; do_resume_song
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.proc do_resume_song
+        rts
+.endproc
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; do_next_song
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.proc do_next_song
+        ldx current_song
+        inx
+        cpx #TOTAL_SONGS
+        bne l0
+
+        ldx #0
+l0:
+        stx current_song
+
+        jmp do_play_song
+.endproc
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; do_prev_song
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.proc do_prev_song
+        ldx current_song
+        dex
+        bpl l0
+
+        ldx #(TOTAL_SONGS-1)
+l0:
+        stx current_song
+
+        jmp do_play_song
+.endproc
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; do_play_song
 ; decrunches real song, and initializes white song
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-.proc do_init_song
+.proc do_play_song
         sei
 
         lda #1
@@ -277,6 +362,17 @@ l1:                                     ; and update the color ram
         lda current_song                ; x = current_song * 2
         asl
         tax
+
+        lda song_init_addr,x            ; update music init addr
+        sta music_init_addr
+        lda song_init_addr+1,x
+        sta music_init_addr+1
+
+        lda song_play_addr,x            ; update music play addr
+        sta main::music_play_addr
+        lda song_play_addr+1,x
+        sta main::music_play_addr+1
+
         jsr init_crunch_data            ; requires x
 
         dec $01                         ; $34: RAM 100%
@@ -285,15 +381,17 @@ l1:                                     ; and update the color ram
 
         inc $01                         ; $35: RAM + IO ($D000-$DF00)
 
-        lda #0
-        tax
-        tay
-        jsr MUSIC_INIT
 
         ldx #<$4cc7                     ; init timer
         ldy #>$4cc7                     ; sync with PAL
         stx $dc04                       ; it plays at 50.125hz
         sty $dc05                       ; we have to call this everytime
+
+        lda #0
+        tax
+        tay
+music_init_addr = * + 1
+        jsr MUSIC_INIT
 
         lda #$81                        ; turn on cia interrups
         sta $dc0d
@@ -320,40 +418,86 @@ song_end_addrs:
         .addr song_4_eod
         .addr song_5_eod
         .addr song_6_eod
+        .addr song_7_eod
+        .addr song_8_eod
+TOTAL_SONGS = (* - song_end_addrs) / 2
 
+; Ashes to Ashes:  3:43
+; Final Countdown: 3:09
+; Pop Goes the World: 3:31
+; Jump: 1:35
+; Enola Gay: 3:25
+; Billie Jean: 3:58
+; Another Day In Paradise: 2:24
+; Wind of Change: 3:35
 song_durations:                                 ; measured in "cycles ticks"
-        .word (3*60+13) * 50                    ; #1 3:13
-        .word (3*60+31) * 50                    ; #2 3:31
-        .word (2*60+25) * 50                    ; #3 2:25
-        .word (2*60+30) * 50                    ; #4 2:30
-        .word (3*60+04) * 50                    ; #5 3:04
-        .word (3*60+51) * 50                    ; #6 3:51
+        .word (3*60+43) * 50                    ; #1 3:43
+        .word (3*60+09) * 50                    ; #2 3:09
+        .word (3*60+31) * 50                    ; #3 3:31
+        .word (1*60+35) * 50                    ; #4 1:35
+        .word (3*60+25) * 50                    ; #5 3:25
+        .word (3*60+58) * 50                    ; #6 3:58
+        .word (2*60+24) * 50                    ; #7 2:24
+        .word (3*60+35) * 50                    ; #8 3:35
+
+song_init_addr:                                 ; measured in "cycles ticks"
+        .word $1000
+        .word $1000
+        .word $1000
+        .word $1000
+        .word $1000
+        .word $0fe0
+        .word $1000
+        .word $1000
+
+song_play_addr:                                 ; measured in "cycles ticks"
+        .word $1006
+        .word $1003
+        .word $1003
+        .word $1003
+        .word $1003
+        .word $0ff3
+        .word $1003
+        .word $1003
 
 screen_colors:
         .incbin "mainscreen-colors.bin"
 
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+;.segment "CHARSET"
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 .segment "CHARSET"
         .incbin "mainscreen-charset.bin"
 
 
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+;.segment "COMPRESSED"
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 .segment "COMPRESSED"
-.incbin "Carito.exo"
+
+        .incbin "Ashes_to_Ashes.exo"
 song_1_eod:
 
-.incbin "Pop_Goes_the_World.exo"
+        .incbin "Final_Countdown.exo"
 song_2_eod:
 
-.incbin "Drogacumbia.exo"
+        .incbin "Pop_Goes_the_World.exo"
 song_3_eod:
 
-.incbin "Mama_Killa.exo"
+        .incbin "Jump.exo"
 song_4_eod:
 
-.incbin "Paesaggio.exo"
+        .incbin "Enola_Gay.exo"
 song_5_eod:
 
-.incbin "Supremacy.exo"
+        .incbin "Billie_Jean_8bit_Style.exo"
 song_6_eod:
+
+        .incbin "Another_Day_in_Paradise.exo"
+song_7_eod:
+
+        .incbin "Wind_of_Change.exo"
+song_8_eod:
 
 
 .incbin "mainscreen-map.bin.exo"

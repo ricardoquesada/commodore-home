@@ -31,20 +31,24 @@
 
 process_event:
         cmp #%00000001                  ; up ?
-        beq go_prev
-        cmp #%00000100                  ; left ?
-        beq go_prev
+        beq go_prev_item
         cmp #%00000010                  ; down ?
-        beq go_next
+        beq go_next_item
+        cmp #%00000100                  ; left ?
+        beq go_prev_menu
         cmp #%00001000                  ; right ?
-        beq go_next
+        beq go_next_menu
         and #%00010000                  ; fire pressed ?
         bne go_fire
         rts
-go_prev:
+go_prev_item:
         jmp menu_prev_row
-go_next:
+go_next_item:
         jmp menu_next_row
+go_prev_menu:
+        jmp menu_prev_menu
+go_next_menu:
+        jmp menu_next_menu
 go_fire:
         jmp menu_execute
 .endproc
@@ -88,6 +92,22 @@ l0:     lda (MENU_CURRENT_ROW_ADDR),y
 .export menu_execute
 .proc menu_execute
         jmp (MENU_EXEC_ADDR)
+.endproc
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; void menu_prev_menu
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.export menu_prev_menu
+.proc menu_prev_menu
+        jmp (MENU_PREV_ADDR)
+.endproc
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; void menu_next_menu
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.export menu_next_menu
+.proc menu_next_menu
+        jmp (MENU_NEXT_ADDR)
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
@@ -157,16 +177,19 @@ end:
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 .proc read_events
 
-        lda #%00011111
-        sta $dc00
+        ; disable joy since it will be used
+        ; by the UniJoysticle
 
-        lda $dc00                       ; read joy#2
-        eor #%11111111                  ; "normalize" events
-        and #%00011111
-        beq l1                          ; if no joystick, read keyboard
-        rts
-
-l1:     jmp read_keyboard               ; otherwise, read keyboard
+;        lda #%00011111
+;        sta $dc00
+;
+;        lda $dc00                       ; read joy#2
+;        eor #%11111111                  ; "normalize" events
+;        and #%00011111
+;        beq l1                          ; if no joystick, read keyboard
+;        rts
+;l1:
+     jmp read_keyboard               ; otherwise, read keyboard
 
 .endproc
 

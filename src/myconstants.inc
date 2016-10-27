@@ -38,4 +38,6 @@ MENU_BYTES_BETWEEN_ITEMS = $43                          ; .byte  40 for one afte
 MENU_ITEM_LEN = $44                                     ; .byte  40 for complete line
 MENU_CURRENT_ROW_ADDR = $45 ; and $46                   ; 2 .bytes  screen ptr to current item
 MENU_EXEC_ADDR = $47  ; and $48                         ; 2 .bytes  When button is pressed, what to do
+MENU_PREV_ADDR = $49  ; and $4a                         ; 2 .bytes  When "next" menu is pressed, what to do
+MENU_NEXT_ADDR = $4b  ; and $4c                         ; 2 .bytes  When "prev" menu is pressed, what to do
 
