@@ -139,6 +139,28 @@ end:
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; void menu_update_current_row
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.export menu_update_current_row
+.proc menu_update_current_row
+        ldx MENU_CURRENT_ITEM
+        beq end                                         ; if 0, already in place
+l0:
+        clc
+        lda MENU_BYTES_BETWEEN_ITEMS
+        adc MENU_CURRENT_ROW_ADDR
+        sta MENU_CURRENT_ROW_ADDR
+        bcc :+
+        inc MENU_CURRENT_ROW_ADDR+1
+:
+        dex
+        bne l0
+end:
+        rts
+.endproc
+
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 ; void menu_prev_row()
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 .export menu_prev_row
@@ -219,17 +241,17 @@ end:
         eor #%00010000                  ; set A to correct value
         bne end                         ; if pressed, end
 
-        ; don't read "RETURN" since it can be
-        ; confused with JOY#1 DOWN
-;        lda #%11111110                  ; return ?
-;        sta CIA1_PRA                    ; row 0
-;        lda CIA1_PRB
-;        cmp #%11111101                  ; col 2
-;        bne skip1                       ; if pressed, end
-;        lda #%00010000
-;        jmp end
-;
-;skip1:
+;        ; don't read "RETURN" since it can be
+;        ; confused with JOY#1 DOWN
+        lda #%11111110                  ; return ?
+        sta CIA1_PRA                    ; row 0
+        lda CIA1_PRB
+        cmp #%11111101                  ; col 2
+        bne skip1                       ; if pressed, end
+        lda #%00010000
+        jmp end
+
+skip1:
         lda #%11111101                  ; left shift pressed ?
         sta CIA1_PRA                    ; row 1
         lda CIA1_PRB
@@ -254,10 +276,10 @@ skip2:
         eor #%00000100
         beq up_down
 
-        lda #%00000100                  ; Left bit On
+        lda #%00001000                  ; Right bit On
         ldx shift_pressed
         beq end
-        asl                             ; convert "left" into "right"
+        lsr                             ; convert "right" into "left"
         ; assert (!z)
         bne end
 

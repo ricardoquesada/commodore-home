@@ -17,7 +17,7 @@
 .import decrunch                        ; exomizer decrunch
 .import get_crunched_byte               ; needed for exomizer decruncher
 .import _crunched_byte_lo, _crunched_byte_hi
-.import menu_handle_events, menu_invert_row
+.import menu_handle_events, menu_invert_row, menu_update_current_row
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 ; Constants
@@ -65,12 +65,13 @@
         sty $ffff
 
         jsr init_screen
-        jsr main_init_menu
+        jsr main_init_menu_song + 3
 
         cli
 
 main_loop:
         jsr menu_handle_events
+
         lda sync_timer_irq
         beq main_loop
 
@@ -227,13 +228,54 @@ l1:                                     ; and update the color ram
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-; void main_init_menu()
+; void main_init_menu_light()
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-.proc main_init_menu
+.proc main_init_menu_light
+        jsr menu_invert_row                     ; turn off previous menu
+        lda MENU_CURRENT_ITEM                   ; save last used item
+        sta menu_song_last_idx
+
+        lda #2                                  ; setup the global variables
+        sta MENU_MAX_ITEMS                      ; needed for the menu code
+        lda #5
+        sta MENU_ITEM_LEN
+        lda #40
+        sta MENU_BYTES_BETWEEN_ITEMS
+        ldx #<(SCREEN0_BASE + 40 * 16 + 0)
+        ldy #>(SCREEN0_BASE + 40 * 16 + 0)
+        stx MENU_CURRENT_ROW_ADDR
+        sty MENU_CURRENT_ROW_ADDR+1
+        lda menu_light_last_idx
+        sta MENU_CURRENT_ITEM
+        jsr menu_update_current_row
+
+        ldx #<main_light_exec
+        ldy #>main_light_exec
+        stx MENU_EXEC_ADDR
+        sty MENU_EXEC_ADDR+1
+
+        ldx #<main_init_menu_song
+        ldy #>main_init_menu_song
+        stx MENU_NEXT_ADDR
+        sty MENU_NEXT_ADDR+1
+
+        ldx #<main_nothing_exec
+        ldy #>main_nothing_exec
+        stx MENU_PREV_ADDR
+        sty MENU_PREV_ADDR+1
+
+        jmp menu_invert_row
+.endproc
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; void main_init_menu_song()
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.proc main_init_menu_song
+        jsr menu_invert_row                     ; turn off previous menu
+
+boot = *
         lda #9                                  ; setup the global variables
         sta MENU_MAX_ITEMS                      ; needed for the menu code
-        lda #0
-        sta MENU_CURRENT_ITEM
         lda #25
         sta MENU_ITEM_LEN
         lda #40
@@ -242,18 +284,73 @@ l1:                                     ; and update the color ram
         ldy #>(SCREEN0_BASE + 40 * 16 + 8)
         stx MENU_CURRENT_ROW_ADDR
         sty MENU_CURRENT_ROW_ADDR+1
-        ldx #<mainmenu_exec
-        ldy #>mainmenu_exec
+        lda menu_song_last_idx
+        sta MENU_CURRENT_ITEM
+        jsr menu_update_current_row
+
+        ldx #<main_song_exec
+        ldy #>main_song_exec
         stx MENU_EXEC_ADDR
         sty MENU_EXEC_ADDR+1
+
+        ldx #<main_init_menu_dimmer
+        ldy #>main_init_menu_dimmer
+        stx MENU_NEXT_ADDR
+        sty MENU_NEXT_ADDR+1
+
+        ldx #<main_init_menu_light
+        ldy #>main_init_menu_light
+        stx MENU_PREV_ADDR
+        sty MENU_PREV_ADDR+1
 
         jmp menu_invert_row
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-; void mainmenu_exec()
+; void main_init_menu_dimmer()
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-.proc mainmenu_exec
+.proc main_init_menu_dimmer
+
+        jsr menu_invert_row                     ; turn off previous menu
+        lda MENU_CURRENT_ITEM                   ; save last used item
+        sta menu_song_last_idx
+
+        lda #5                                  ; setup the global variables
+        sta MENU_MAX_ITEMS                      ; needed for the menu code
+        lda #5
+        sta MENU_ITEM_LEN
+        lda #40
+        sta MENU_BYTES_BETWEEN_ITEMS
+        ldx #<(SCREEN0_BASE + 40 * 16 + 33)
+        ldy #>(SCREEN0_BASE + 40 * 16 + 33)
+        stx MENU_CURRENT_ROW_ADDR
+        sty MENU_CURRENT_ROW_ADDR+1
+        lda menu_dimmer_last_idx
+        sta MENU_CURRENT_ITEM
+        jsr menu_update_current_row
+
+        ldx #<main_dimmer_exec
+        ldy #>main_dimmer_exec
+        stx MENU_EXEC_ADDR
+        sty MENU_EXEC_ADDR+1
+
+        ldx #<main_nothing_exec
+        ldy #>main_nothing_exec
+        stx MENU_NEXT_ADDR
+        sty MENU_NEXT_ADDR+1
+
+        ldx #<main_init_menu_song
+        ldy #>main_init_menu_song
+        stx MENU_PREV_ADDR
+        sty MENU_PREV_ADDR+1
+
+        jmp menu_invert_row
+.endproc
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; void main_song_exec()
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.proc main_song_exec
         lda MENU_CURRENT_ITEM
         bne :+
         jmp do_stop_song
@@ -267,13 +364,33 @@ l1:                                     ; and update the color ram
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; void main_dimmer_exec()
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.proc main_dimmer_exec
+        lda MENU_CURRENT_ITEM
+        rts
+.endproc
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; void main_light_exec()
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.proc main_light_exec
+        lda MENU_CURRENT_ITEM
+        rts
+.endproc
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; void main_nothing_exec()
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.proc main_nothing_exec
+        rts
+.endproc
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 ; do_stop_song
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 .proc do_stop_song
         sei
-
-        lda #0
-        sta is_playing                  ; is_playing = false
 
         lda #$7f                        ; turn off cia interrups
         sta $dc0d
@@ -342,12 +459,6 @@ l0:
 .proc do_play_song
         sei
 
-        lda #1
-        sta is_playing                  ; is_playing = true
-
-        lda #1
-        sta is_already_loaded           ; is_already_loaded = true
-
         lda #0
         sta song_tick                   ; reset song tick
         sta song_tick+1
@@ -404,12 +515,13 @@ music_init_addr = * + 1
 ; variables
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 current_song:           .byte 0
-is_playing:             .byte 0
-is_already_loaded:      .byte 0
 sync_timer_irq:         .byte 0
 sync_raster_irq:        .byte 0
 song_tick:              .word 0
-
+menu_song_last_idx:     .byte 0
+menu_dimmer_last_idx:   .byte 0
+menu_light_last_idx:    .byte 0
+current_menu:           .byte 0
 
 song_end_addrs:
         .addr song_1_eod
