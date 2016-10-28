@@ -634,6 +634,8 @@ uni_commands:
         .addr do_nothing                ; 29
         .addr do_nothing                ; 30
         .addr do_nothing                ; 31
+TOTAL_COMMANDS = (* - uni_commands) / 2
+        ; Assert( TOTAL_COMMANDS == 32)
 
 
 song_end_addrs:
