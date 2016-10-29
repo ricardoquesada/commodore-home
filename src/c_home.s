@@ -100,6 +100,12 @@ music_play_addr = * + 1
         lda $dc00
         and #%00011111
         eor #%00011111
+
+        cmp last_uni_command                    ; avoid duplicates
+        beq end
+
+        sta last_uni_command
+
         asl
         tax
         lda uni_commands,x
@@ -107,6 +113,9 @@ music_play_addr = * + 1
         lda uni_commands+1,x
         sta $fb
         jmp ($fa)
+
+end:
+        rts
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
@@ -599,7 +608,7 @@ menu_song_last_idx:     .byte 0
 menu_dimmer_last_idx:   .byte 0
 menu_light_last_idx:    .byte 0
 current_menu:           .byte 0
-
+last_uni_command:       .byte 0
 
 uni_commands:
         .addr do_nothing                ; 0
