@@ -1,6 +1,7 @@
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 ;
 ; Commodore Home: Home Automation for the masses, not the classes
+; https://github.com/ricardoquesada/c64-home
 ;
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 
@@ -15,6 +16,13 @@ MUSIC_PLAY = $1003
 
 SCREEN0_BASE = $0400
 SCREEN1_BASE = $3000
+
+BANK_BASE = 0
+SPRITES_BASE = BANK_BASE + $2800                        ; Sprite 0 at $2400
+                                                        ; reserved space for 32 sprites
+                                                        ; from $2800 to $3000
+SPRITES_POINTER = <((SPRITES_BASE .MOD $4000) / 64)     ; Sprite 0 at 144
+SPRITES_PTR0 = SCREEN0_BASE + 1016                      ; right after the screen, at $7f8
 
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;

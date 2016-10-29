@@ -7,12 +7,16 @@ X64 = x64
 all: data bin
 bin: c_home run
 
-SRC=src/c_home.s src/exodecrunch.s src/menu.s src/utils.s
+SRC=src/intro.s src/c_home.s src/exodecrunch.s src/menu.s src/utils.s
 
 data:
 	-cp res/mainscreen-*.bin src/
 	-cp res/alarm-map.bin src/
+	-cp res/sprites.bin src/
 	-exomizer mem -o src/mainscreen-map.bin.exo res/mainscreen-map.prg
+	-exomizer mem -o src/mainscreen-charset.bin.exo res/mainscreen-charset.prg
+	-exomizer mem -o src/intro-charset.bin.exo res/intro-charset.prg
+	-exomizer mem -o src/intro-map.bin.exo res/intro-map.prg
 
 c_home: ${SRC}
 	echo "Compiling..."

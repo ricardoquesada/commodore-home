@@ -1,6 +1,7 @@
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 ;
 ; Commodore Home: Home Automation for the masses, not the classes
+; https://github.com/ricardoquesada/c64-home
 ;
 ; Collection of utils functions
 ;

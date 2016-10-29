@@ -1,6 +1,7 @@
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 ;
 ; Commodore Home: Home Automation for the masses, not the classes
+; https://github.com/ricardoquesada/c64-home
 ;
 ; main
 ;
@@ -31,7 +32,8 @@
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 .segment "CODE"
 
-.proc main
+.export main_init
+.proc main_init
         sei
 
         lda #$35
@@ -42,6 +44,8 @@
 
         lda #0
         sta $d01a                       ; no raster interrups
+
+        sta VIC_SPR_ENA                 ; no sprites
 
 
         lda #$00                        ; background & border color
@@ -66,7 +70,6 @@
         sty $ffff
 
         jsr init_screen
-        jsr main_init_menu_song + 3
 
         cli
 
@@ -199,8 +202,14 @@ end:
 
         dec $01                         ; $34: RAM 100%
 
-        ldx #<screen_ram_eod            ; decrunch in $0400
-        ldy #>screen_ram_eod
+        ldx #<mainscreen_map_exo        ; decrunch in $0400
+        ldy #>mainscreen_map_exo
+        stx _crunched_byte_lo
+        sty _crunched_byte_hi
+        jsr decrunch
+
+        ldx #<mainscreen_charset_exo    ; decrunch in $3800
+        ldy #>mainscreen_charset_exo
         stx _crunched_byte_lo
         sty _crunched_byte_hi
         jsr decrunch
@@ -222,7 +231,7 @@ end:
         lda #%00001000                  ; no scroll, hires (mono color), 40-cols
         sta $d016                       ; turn off multicolor
 
-        rts
+        jmp main_init_menu_song + 3     ; skip invert row row
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
@@ -509,7 +518,7 @@ boot = *
         sta $d018
 
         lda #0                          ; no volume
-        sta $d418
+        sta SID_Amp
 
         jsr alarmscreen_paint_colors
         cli
@@ -579,7 +588,7 @@ do_song_7:
         sta $dc0d
 
         lda #$00
-        sta $d418                       ; no volume
+        sta SID_Amp
 
         lda $dc0d                       ; ack possible interrupts
         lda $dd0d
@@ -649,7 +658,7 @@ l0:
         lda #$7f                        ; turn off cia interrups
         sta $dc0d
         lda #$00
-        sta $d418                       ; no volume
+        sta SID_Amp
 
 ;        jsr print_names_empty
 
@@ -663,9 +672,9 @@ l0:
         sta music_init_addr+1
 
         lda song_play_addr,x            ; update music play addr
-        sta main::music_play_addr
+        sta main_init::music_play_addr
         lda song_play_addr+1,x
-        sta main::music_play_addr+1
+        sta main_init::music_play_addr+1
 
         jsr init_crunch_data            ; requires x
 
@@ -689,6 +698,9 @@ music_init_addr = * + 1
 
         lda #$81                        ; turn on cia interrups
         sta $dc0d
+
+        lda #$11
+        sta $dc0e                       ; start timer interrupt A
 
         cli
         rts
@@ -917,7 +929,6 @@ screen_colors:
 ;.segment "CHARSET"
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 .segment "CHARSET"
-        .incbin "mainscreen-charset.bin"
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 ;.segment "SCREEN1"
@@ -956,7 +967,10 @@ song_8_eod:
 
 
 .incbin "mainscreen-map.bin.exo"
-screen_ram_eod:
+mainscreen_map_exo:
+
+.incbin "mainscreen-charset.bin.exo"
+mainscreen_charset_exo:
 
 .byte 0                 ; ignore
 
