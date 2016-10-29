@@ -106,6 +106,11 @@ music_play_addr = * + 1
 
         sta last_uni_command
 
+        tay                                     ; so commands want to know
+                                                ; which command was called
+                                                ; useful when multiple commands use
+                                                ; one dispatch function
+
         asl
         tax
         lda uni_commands,x
@@ -257,9 +262,9 @@ l1:                                     ; and update the color ram
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-; void main_init_menu_light()
+; void main_init_menu_alarm()
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-.proc main_init_menu_light
+.proc main_init_menu_alarm
         jsr menu_invert_row                     ; turn off previous menu
         lda MENU_CURRENT_ITEM                   ; save last used item
         sta menu_song_last_idx
@@ -274,12 +279,12 @@ l1:                                     ; and update the color ram
         ldy #>(SCREEN0_BASE + 40 * 16 + 0)
         stx MENU_CURRENT_ROW_ADDR
         sty MENU_CURRENT_ROW_ADDR+1
-        lda menu_light_last_idx
+        lda menu_alarm_last_idx
         sta MENU_CURRENT_ITEM
         jsr menu_update_current_row
 
-        ldx #<main_light_exec
-        ldy #>main_light_exec
+        ldx #<main_alarm_exec
+        ldy #>main_alarm_exec
         stx MENU_EXEC_ADDR
         sty MENU_EXEC_ADDR+1
 
@@ -303,7 +308,7 @@ l1:                                     ; and update the color ram
         jsr menu_invert_row                     ; turn off previous menu
 
 boot = *
-        lda #9                                  ; setup the global variables
+        lda #8                                  ; setup the global variables
         sta MENU_MAX_ITEMS                      ; needed for the menu code
         lda #25
         sta MENU_ITEM_LEN
@@ -327,8 +332,8 @@ boot = *
         stx MENU_NEXT_ADDR
         sty MENU_NEXT_ADDR+1
 
-        ldx #<main_init_menu_light
-        ldy #>main_init_menu_light
+        ldx #<main_init_menu_alarm
+        ldy #>main_init_menu_alarm
         stx MENU_PREV_ADDR
         sty MENU_PREV_ADDR+1
 
@@ -381,13 +386,9 @@ boot = *
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 .proc main_song_exec
         lda MENU_CURRENT_ITEM
-        bne :+
-        jmp do_song_stop
+        sta current_song
 
-:
-        tax
-        dex
-        stx current_song
+        jsr song_menu_update            ; display arrow
 
         jmp do_song_play
 .endproc
@@ -397,14 +398,16 @@ boot = *
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 .proc main_dimmer_exec
         lda MENU_CURRENT_ITEM
+        jsr dimmer_menu_update            ; display arrow
         rts
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-; void main_light_exec()
+; void main_alarm_exec()
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-.proc main_light_exec
+.proc main_alarm_exec
         lda MENU_CURRENT_ITEM
+        jsr alarm_menu_update
         rts
 .endproc
 
@@ -432,6 +435,9 @@ boot = *
 ; do_alarm_on
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 .proc do_alarm_on
+        lda #1
+        sta alarm_enabled
+        jsr alarm_menu_update
         rts
 .endproc
 
@@ -439,6 +445,16 @@ boot = *
 ; do_alarm_off
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 .proc do_alarm_off
+        lda #0
+        sta alarm_enabled
+        jsr alarm_menu_update
+        rts
+.endproc
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; do_alarm_trigger
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.proc do_alarm_trigger
         rts
 .endproc
 
@@ -450,11 +466,21 @@ do_dimmer_75:
 do_dimmer_50:
 do_dimmer_25:
 do_dimmer_0:
+
+        tya                             ; Y = current command
+
+        sec
+        sbc #15                         ; dimmer_0 = 15.
+                                        ; so, change offset to 0
+
+        jsr dimmer_menu_update
         rts
 
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 ; do_song_?
+; entry:
+;       Y = command
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 do_song_0:
 do_song_1:
@@ -464,12 +490,12 @@ do_song_4:
 do_song_5:
 do_song_6:
 do_song_7:
-        txa                             ; (x*2)+1 is the song number, so reverse it
-        lsr                             ; now it is x+1
-        tax
-        dex                             ; now it is x. yay!
+        dey                             ; songs are "command - 1"
+        sty current_song
 
-        stx current_song
+        tya
+        jsr song_menu_update
+
         jmp do_song_play
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
@@ -598,6 +624,122 @@ music_init_addr = * + 1
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; song_menu_update(A = idx to select)
+; uses temp: $fa, $fb, $fc, $fd, $fe
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.proc song_menu_update
+        sta $fc
+
+        ldx #<(SCREEN0_BASE + 40 * 16 + 8)
+        ldy #>(SCREEN0_BASE + 40 * 16 + 8)
+        stx $fa
+        sty $fb
+
+        lda #24
+        sta $fd                         ; item lenght
+
+        lda #8
+        sta $fe
+
+        jmp update_menu_arrows
+.endproc
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; dimmer_menu_update(A = idx to select)
+; uses temp: $fa, $fb, $fc, $fd, $fe
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.proc dimmer_menu_update
+        sta $fc                         ; item to display arrow
+
+        ldx #<(SCREEN0_BASE + 40 * 16 + 33)
+        ldy #>(SCREEN0_BASE + 40 * 16 + 33)
+        stx $fa
+        sty $fb
+
+        lda #4                          ; item lenght - 1
+        sta $fd                         ; 4 means a lenght of 5
+
+        lda #5                          ; total items
+        sta $fe
+
+        jmp update_menu_arrows
+.endproc
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; alarm_menu_update(A = idx to select)
+; uses temp: $fa, $fb, $fc, $fd, $fe
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.proc alarm_menu_update
+        sta $fc                         ; item to display arrow
+
+        ldx #<(SCREEN0_BASE + 40 * 16 + 0)
+        ldy #>(SCREEN0_BASE + 40 * 16 + 0)
+        stx $fa
+        sty $fb
+
+        lda #4                          ; item lenght - 1
+        sta $fd                         ; 4 means a lenght of 5
+
+        lda #2                          ; total items
+        sta $fe
+
+        jmp update_menu_arrows
+.endproc
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; update_menu_arrows
+; uses $fa, $fb, $fc, $fd, $fe
+; $fa,$fb:  screen ptr
+; $fc: item to have the arrow
+; $fd: item len
+; $fe: number of items
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.proc update_menu_arrows
+
+        ldx #0                          ; items
+
+l0:
+        cpx $fc                         ; item to place the arrow
+        bne space
+
+        ldy #0
+        lda ($fa),y
+        and #%10000000
+        ora #30                         ; arrow ->
+        sta ($fa),y
+
+        ldy $fd                         ; item lenght
+        ora #1                          ; arrow <-
+        sta ($fa),y
+        jmp next
+
+space:
+        ldy #0
+        lda ($fa),y
+        and #%10000000
+        ora #$20
+        sta ($fa),y
+
+        ldy $fd                         ; item lenght
+        sta ($fa),y
+
+next:
+        clc
+        lda $fa
+        adc #40
+        sta $fa
+        bcc :+
+        inc $fb
+:
+
+        inx
+        cpx $fe                        ; 7 = total items
+        bne l0
+
+        rts
+.endproc
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 ; variables
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 current_song:           .byte 0
@@ -606,9 +748,10 @@ sync_raster_irq:        .byte 0
 song_tick:              .word 0
 menu_song_last_idx:     .byte 0
 menu_dimmer_last_idx:   .byte 0
-menu_light_last_idx:    .byte 0
+menu_alarm_last_idx:    .byte 0
 current_menu:           .byte 0
 last_uni_command:       .byte 0
+alarm_enabled:          .byte 0
 
 uni_commands:
         .addr do_nothing                ; 0
@@ -633,7 +776,7 @@ uni_commands:
         .addr do_dimmer_100             ; 19
         .addr do_alarm_off              ; 20
         .addr do_alarm_on               ; 21
-        .addr do_nothing                ; 22
+        .addr do_alarm_trigger          ; 22
         .addr do_nothing                ; 23
         .addr do_nothing                ; 24
         .addr do_nothing                ; 25
