@@ -11,6 +11,7 @@ SRC=src/c_home.s src/exodecrunch.s src/menu.s src/utils.s
 
 data:
 	cp res/mainscreen-*.bin src/
+	cp res/alarm-map.bin src/
 	exomizer mem -o src/mainscreen-map.bin.exo res/mainscreen-map.prg
 
 c_home: ${SRC}

@@ -18,6 +18,7 @@
 .import get_crunched_byte               ; needed for exomizer decruncher
 .import _crunched_byte_lo, _crunched_byte_hi
 .import menu_handle_events, menu_invert_row, menu_update_current_row
+.import ut_get_key
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 ; Constants
@@ -206,30 +207,7 @@ end:
 
         inc $01                         ; $35: RAM + IO ($D000-$DFFF)
 
-        ldx #0                          ; read data from $0400
-l1:                                     ; and update the color ram
-        lda $0400 + $0000,x
-        tay
-        lda screen_colors,y
-        sta $d800 + $0000,x
-
-        lda $0400 + $0100,x
-        tay
-        lda screen_colors,y
-        sta $d800 + $0100,x
-
-        lda $0400 + $0200,x
-        tay
-        lda screen_colors,y
-        sta $d800 + $0200,x
-
-        lda $0400 + $02e8,x
-        tay
-        lda screen_colors,y
-        sta $d800 + $02e8,x
-
-        inx
-        bne l1
+        jsr mainscreen_paint_colors
 
         lda $dd00                       ; Vic bank 0: $0000-$3FFF
         and #$fc
@@ -243,6 +221,70 @@ l1:                                     ; and update the color ram
         sta $d011                       ; extended color mode: off
         lda #%00001000                  ; no scroll, hires (mono color), 40-cols
         sta $d016                       ; turn off multicolor
+
+        rts
+.endproc
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; mainscreen_paint_colors
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.proc mainscreen_paint_colors
+        ldx #0                          ; read data from $0400
+l1:                                     ; and update the color ram
+        lda SCREEN0_BASE + $0000,x
+        tay
+        lda screen_colors,y
+        sta $d800 + $0000,x
+
+        lda SCREEN0_BASE + $0100,x
+        tay
+        lda screen_colors,y
+        sta $d800 + $0100,x
+
+        lda SCREEN0_BASE + $0200,x
+        tay
+        lda screen_colors,y
+        sta $d800 + $0200,x
+
+        lda SCREEN0_BASE + $02e8,x
+        tay
+        lda screen_colors,y
+        sta $d800 + $02e8,x
+
+        inx
+        bne l1
+
+        rts
+.endproc
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; alarmcreen_paint_colors
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.proc alarmscreen_paint_colors
+        ldx #0                          ; read data from $0400
+l1:                                     ; and update the color ram
+        lda SCREEN1_BASE + $0000,x
+        tay
+        lda screen_colors,y
+        sta $d800 + $0000,x
+
+        lda SCREEN1_BASE + $0100,x
+        tay
+        lda screen_colors,y
+        sta $d800 + $0100,x
+
+        lda SCREEN1_BASE + $0200,x
+        tay
+        lda screen_colors,y
+        sta $d800 + $0200,x
+
+        lda SCREEN1_BASE + $02e8,x
+        tay
+        lda screen_colors,y
+        sta $d800 + $02e8,x
+
+        inx
+        bne l1
 
         rts
 .endproc
@@ -407,6 +449,7 @@ boot = *
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 .proc main_alarm_exec
         lda MENU_CURRENT_ITEM
+        sta alarm_enabled
         jsr alarm_menu_update
         rts
 .endproc
@@ -455,6 +498,34 @@ boot = *
 ; do_alarm_trigger
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 .proc do_alarm_trigger
+
+        lda alarm_enabled
+        bne :+
+        rts
+
+:
+        sei
+        lda #%11001110                  ; charset at $3800, screen at $3000
+        sta $d018
+
+        lda #0                          ; no volume
+        sta $d418
+
+        jsr alarmscreen_paint_colors
+        cli
+main_loop:
+        jsr ut_get_key
+        bcc main_loop
+
+
+        sei                             ; alarm deactivated. return to main menu
+
+        jsr mainscreen_paint_colors
+        lda #%00011110                  ; charset at $3800, screen at $0400
+        sta $d018
+
+        cli
+
         rts
 .endproc
 
@@ -848,6 +919,11 @@ screen_colors:
 .segment "CHARSET"
         .incbin "mainscreen-charset.bin"
 
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+;.segment "SCREEN1"
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.segment "SCREEN1"
+        .incbin "alarm-map.bin"
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 ;.segment "COMPRESSED"
