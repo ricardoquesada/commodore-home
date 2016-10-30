@@ -70,6 +70,7 @@
         sty $ffff
 
         jsr init_screen
+        jsr init_vars
 
         cli
 
@@ -235,6 +236,21 @@ end:
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; init_vars
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.proc init_vars
+        ldx #(VAR_ZERO_TOTAL-1)
+        lda #0
+
+l0:
+        sta VAR_ZERO_BEGIN,x
+        dex
+        bpl l0
+
+        rts
+.endproc
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 ; mainscreen_paint_colors
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 .proc mainscreen_paint_colors
@@ -339,8 +355,8 @@ l1:                                     ; and update the color ram
         stx MENU_EXEC_ADDR
         sty MENU_EXEC_ADDR+1
 
-        ldx #<main_init_menu_song
-        ldy #>main_init_menu_song
+        ldx #<main_init_menu_song_from_alarm
+        ldy #>main_init_menu_song_from_alarm
         stx MENU_NEXT_ADDR
         sty MENU_NEXT_ADDR+1
 
@@ -350,6 +366,24 @@ l1:                                     ; and update the color ram
         sty MENU_PREV_ADDR+1
 
         jmp menu_invert_row
+.endproc
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; void main_init_menu_song_from_dimmer()
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.proc main_init_menu_song_from_dimmer
+        lda MENU_CURRENT_ITEM
+        sta menu_dimmer_last_idx
+        jmp main_init_menu_song
+.endproc
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; void main_init_menu_song_from_alarm()
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.proc main_init_menu_song_from_alarm
+        lda MENU_CURRENT_ITEM
+        sta menu_alarm_last_idx
+        jmp main_init_menu_song
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
@@ -424,8 +458,8 @@ boot = *
         stx MENU_NEXT_ADDR
         sty MENU_NEXT_ADDR+1
 
-        ldx #<main_init_menu_song
-        ldy #>main_init_menu_song
+        ldx #<main_init_menu_song_from_dimmer
+        ldy #>main_init_menu_song_from_dimmer
         stx MENU_PREV_ADDR
         sty MENU_PREV_ADDR+1
 
@@ -527,13 +561,7 @@ main_loop:
         bcc main_loop
 
 
-        sei                             ; alarm deactivated. return to main menu
-
-        jsr mainscreen_paint_colors
-        lda #%00011110                  ; charset at $3800, screen at $0400
-        sta $d018
-
-        cli
+        jmp main_init
 
         rts
 .endproc
@@ -825,6 +853,7 @@ next:
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 ; variables
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+VAR_ZERO_BEGIN = *
 current_song:           .byte 0
 sync_timer_irq:         .byte 0
 sync_raster_irq:        .byte 0
@@ -835,6 +864,7 @@ menu_alarm_last_idx:    .byte 0
 current_menu:           .byte 0
 last_uni_command:       .byte 0
 alarm_enabled:          .byte 0
+VAR_ZERO_TOTAL = * - VAR_ZERO_BEGIN
 
 uni_commands:
         .addr do_nothing                ; 0
