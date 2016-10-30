@@ -20,6 +20,8 @@
 .import _crunched_byte_lo, _crunched_byte_hi
 .import menu_handle_events, menu_invert_row, menu_update_current_row
 .import ut_get_key
+.import song_1_eod, song_2_eod, song_3_eod, song_4_eod, song_5_eod, song_6_eod, song_7_eod, song_8_eod
+.import mainscreen_charset_exo, mainscreen_map_exo
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 ; Constants
@@ -551,10 +553,26 @@ boot = *
         lda #%11001110                  ; charset at $3800, screen at $3000
         sta $d018
 
-        lda #0                          ; no volume
+        lda #$7f                        ; turn off cia interrups
+        sta $dc0d
+
+        lda #$00
         sta SID_Amp
 
+        lda $dc0d                       ; ack possible interrupts
+        lda $dd0d
+        asl $d019
+
+        ldx #<irq_vector_play
+        ldy #>irq_vector_play
+        stx $fffe
+        sty $ffff
+
+        lda #1                          ; enable raster irq
+        sta $d01a
+
         jsr alarmscreen_paint_colors
+
         cli
 main_loop:
         jsr ut_get_key
@@ -562,8 +580,23 @@ main_loop:
 
 
         jmp main_init
-
         rts
+
+irq_vector_play:
+        pha                             ; saves A, X, Y
+        txa
+        pha
+        tya
+        pha
+
+        asl $d019                       ; clears raster interrupt
+
+        pla                             ; restores A, X, Y
+        tay
+        pla
+        tax
+        pla
+        rti                             ; restores previous PC, status
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
@@ -955,55 +988,3 @@ song_play_addr:                                 ; measured in "cycles ticks"
 screen_colors:
         .incbin "mainscreen-colors.bin"
 
-;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-;.segment "CHARSET"
-;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-.segment "CHARSET"
-
-;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-;.segment "SCREEN1"
-;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-.segment "SCREEN1"
-        .incbin "alarm-map.bin"
-
-;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-;.segment "COMPRESSED"
-;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-.segment "COMPRESSED"
-
-        .incbin "Ashes_to_Ashes.exo"
-song_1_eod:
-
-        .incbin "Final_Countdown.exo"
-song_2_eod:
-
-        .incbin "Pop_Goes_the_World.exo"
-song_3_eod:
-
-        .incbin "Jump.exo"
-song_4_eod:
-
-        .incbin "Enola_Gay.exo"
-song_5_eod:
-
-        .incbin "Billie_Jean_8bit_Style.exo"
-song_6_eod:
-
-        .incbin "Another_Day_in_Paradise.exo"
-song_7_eod:
-
-        .incbin "Wind_of_Change.exo"
-song_8_eod:
-
-
-.incbin "mainscreen-map.bin.exo"
-mainscreen_map_exo:
-
-.incbin "mainscreen-charset.bin.exo"
-mainscreen_charset_exo:
-
-.byte 0                 ; ignore
-
-
-.segment "SID"
-; reserved for SIDs

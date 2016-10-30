@@ -18,6 +18,9 @@
 .import ut_clear_color, ut_start_clean, ut_detect_pal_paln_ntsc, ut_vic_video_type
 .import ut_clear_screen
 
+; from data.s
+.import intro_map_exo, intro_charset_exo
+
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 ; Macros
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
@@ -386,23 +389,3 @@ sync_raster_irq2:
 intro_state:
         .byte INTRO_STATE::FADE_IN
 
-
-;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-;segment "SPRITES"
-;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-.segment "SPRITES"
-.incbin "src/sprites.bin"
-
-;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-;segment "COMPRESSED"
-;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
-.segment "COMPRESSED"
-        ; export it at 0x0400
-        .incbin "src/intro-map.bin.exo"
-intro_map_exo:
-
-        ; export it at 0x3800
-        .incbin "src/intro-charset.bin.exo"
-intro_charset_exo:
-
-        .byte 0             ; ignore
