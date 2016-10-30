@@ -502,8 +502,7 @@ boot = *
 .proc main_alarm_exec
         lda MENU_CURRENT_ITEM
         sta alarm_enabled
-        jsr alarm_menu_update
-        rts
+        jmp alarm_menu_update
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
@@ -532,12 +531,14 @@ boot = *
         ldy #0                          ; upper graphics... who cares.
         jsr $ffba                       ; call SETLFS
 
+        jsr $ffc0                       ; call OPEN
+
         ldx #3
         jsr $ffc9                       ; call CHKOUT
         bne @error
 
         ldx #0
-@l0:     lda fname,x
+@l0:    lda fname,x
         jsr $ffd2                       ; call CHROUT
         inx
         cpx #FILENAME_LEN
@@ -570,6 +571,7 @@ fname_hi:
 fname_lo:
         .byte $30                       ; '0'
         .byte 46                        ; '.'
+        .byte 13
 FILENAME_LEN = * - fname
 
 printer_header_hi:
@@ -605,8 +607,7 @@ printer_header_lo:
 .proc do_alarm_on
         lda #1
         sta alarm_enabled
-        jsr alarm_menu_update
-        rts
+        jmp alarm_menu_update
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
@@ -615,8 +616,7 @@ printer_header_lo:
 .proc do_alarm_off
         lda #0
         sta alarm_enabled
-        jsr alarm_menu_update
-        rts
+        jmp alarm_menu_update
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
@@ -842,6 +842,9 @@ do_song_7:
 l0:
         stx current_song
 
+        txa
+        jsr song_menu_update
+
         jmp do_song_play
 .endproc
 
@@ -856,6 +859,9 @@ l0:
         ldx #(TOTAL_SONGS-1)
 l0:
         stx current_song
+
+        txa
+        jsr song_menu_update
 
         jmp do_song_play
 .endproc
@@ -875,8 +881,6 @@ l0:
         sta $dc0d
         lda #$00
         sta SID_Amp
-
-;        jsr print_names_empty
 
         lda current_song                ; x = current_song * 2
         asl
