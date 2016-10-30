@@ -20,8 +20,10 @@
 .import _crunched_byte_lo, _crunched_byte_hi
 .import menu_handle_events, menu_invert_row, menu_update_current_row
 .import ut_get_key
-.import song_1_eod, song_2_eod, song_3_eod, song_4_eod, song_5_eod, song_6_eod, song_7_eod, song_8_eod
+.import song_1_eod, song_2_eod, song_3_eod, song_4_eod
+.import song_5_eod, song_6_eod, song_7_eod, song_8_eod
 .import mainscreen_charset_exo, mainscreen_map_exo
+.import paln_freq_table_lo, paln_freq_table_hi
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 ; Constants
@@ -73,6 +75,10 @@
 
         jsr init_screen
         jsr init_vars
+
+;        lda #1                         ; test the alarm?
+;        sta alarm_enabled
+;        jmp do_alarm_trigger
 
         cli
 
@@ -553,11 +559,10 @@ boot = *
         lda #%11001110                  ; charset at $3800, screen at $3000
         sta $d018
 
+        jsr alarmscreen_paint_colors
+
         lda #$7f                        ; turn off cia interrups
         sta $dc0d
-
-        lda #$00
-        sta SID_Amp
 
         lda $dc0d                       ; ack possible interrupts
         lda $dd0d
@@ -571,7 +576,19 @@ boot = *
         lda #1                          ; enable raster irq
         sta $d01a
 
-        jsr alarmscreen_paint_colors
+        ldx #$1c                        ; clean SID
+        lda #0
+l0:     sta SID,x
+        dex
+        bpl l0
+
+        lda #$0f                        ; max volume
+        sta SID_Amp
+
+        lda #$a5
+        sta SID_AD1                     ; A=9, D=5
+        lda #$55
+        sta SID_SUR1                    ; S=5, R=5
 
         cli
 main_loop:
@@ -591,12 +608,76 @@ irq_vector_play:
 
         asl $d019                       ; clears raster interrupt
 
+try_delay_note:
+        lda curr_delay_note
+        beq try_delay_release
+        dec curr_delay_note
+        bne :+
+        lda #16                        ; release Gate sawtooth
+        sta SID_Ctl1
+:       jmp end
+
+try_delay_release:
+        lda curr_delay_release
+        beq play_next_note
+        dec curr_delay_release
+        jmp end
+
+play_next_note:
+
+        ldx notes_idx
+        lda notes,x
+        cmp #$ff
+        bne play
+
+        ldx #0
+        stx notes_idx
+        lda notes
+play:
+        tay
+        lda paln_freq_table_lo,y
+        sta SID_S1Lo
+        lda paln_freq_table_hi,y
+        sta SID_S1Hi
+        lda #17                         ; Gate sawtooth
+        sta SID_Ctl1
+
+        lda delays_note,x
+        sta curr_delay_note
+        lda delays_release,x
+        sta curr_delay_release
+
+        inc notes_idx
+
+        txa
+        lsr
+        bcc :+
+        lda #0
+        beq change_color
+:       lda #2
+change_color:
+        sta $d020
+        sta $d021
+end:
         pla                             ; restores A, X, Y
         tay
         pla
         tax
         pla
         rti                             ; restores previous PC, status
+
+notes_idx:
+        .byte 0
+notes:
+        .byte 64,76,64,76,64,76,64,76
+        .byte $ff
+delays_note:
+        .byte $18,$18,$18,$18,$18,$18,$18,$18
+delays_release:
+        .byte $04,$04,$04,$04,$04,$04,$04,$04
+curr_delay_note: .byte 0
+curr_delay_release: .byte 0
+
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
