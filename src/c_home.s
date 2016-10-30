@@ -526,18 +526,22 @@ boot = *
 
         inc $01                         ; $36: kernal in
 
-        lda #FILENAME_LEN               ; OPEN 3,4,0,"CHR$(16)20."
-        ldx #<fname
-        ldy #>fname
-        jsr $ffbd                       ; call SETNAM
-
+                                        ; OPEN 3,4,0
         lda #3                          ; fd
         ldx #4                          ; printer
         ldy #0                          ; upper graphics... who cares.
         jsr $ffba                       ; call SETLFS
 
-        jsr $ffc0                       ; call OPEN
-        bcs @error                      ; if carry set, a load error has happened
+        ldx #3
+        jsr $ffc9                       ; call CHKOUT
+        bne @error
+
+        ldx #0
+@l0:     lda fname,x
+        jsr $ffd2                       ; call CHROUT
+        inx
+        cpx #FILENAME_LEN
+        bne @l0
 
         lda #3                          ; CLOSE 3
         jsr $ffc3                       ; call CLOSE
@@ -552,6 +556,9 @@ boot = *
         ; A = $04 (FILE NOT FOUND)
         ; A = $1D (LOAD ERROR)
         ; A = $00 (BREAK, RUN/STOP has been pressed during loading)
+        
+        lda #3
+        jsr $ffc3                       ; call CLOSE
 
         inc $d020
         dec $01                         ; $35: kernal out
