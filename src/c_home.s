@@ -491,8 +491,9 @@ boot = *
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 .proc main_dimmer_exec
         lda MENU_CURRENT_ITEM
+        sta current_dimmer_value
         jsr dimmer_menu_update            ; display arrow
-        rts
+        jmp dimmer_perform
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
@@ -510,6 +511,72 @@ boot = *
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 .proc main_nothing_exec
         rts
+.endproc
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; void dimmer_perform()
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.proc dimmer_perform
+        ldy current_dimmer_value
+
+        lda printer_header_lo,y
+        sta fname_lo
+        lda printer_header_hi,y
+        sta fname_hi
+
+        inc $01                         ; $36: kernal in
+
+        lda #FILENAME_LEN               ; OPEN 3,4,0,"CHR$(16)20."
+        ldx #<fname
+        ldy #>fname
+        jsr $ffbd                       ; call SETNAM
+
+        lda #3                          ; fd
+        ldx #4                          ; printer
+        ldy #0                          ; upper graphics... who cares.
+        jsr $ffba                       ; call SETLFS
+
+        jsr $ffc0                       ; call OPEN
+        bcs @error                      ; if carry set, a load error has happened
+
+        lda #3                          ; CLOSE 3
+        jsr $ffc3                       ; call CLOSE
+
+        dec $01                         ; $35: kernal out
+        rts
+@error:
+        ; Accumulator contains BASIC error code
+
+        ; most likely errors:
+        ; A = $05 (DEVICE NOT PRESENT)
+        ; A = $04 (FILE NOT FOUND)
+        ; A = $1D (LOAD ERROR)
+        ; A = $00 (BREAK, RUN/STOP has been pressed during loading)
+
+        inc $d020
+        dec $01                         ; $35: kernal out
+        rts
+
+fname:  .byte 16                        ; chr$(16) -> command for the printer. move the header
+fname_hi:
+        .byte $30                       ; '0'
+fname_lo:
+        .byte $30                       ; '0'
+        .byte 46                        ; '.'
+FILENAME_LEN = * - fname
+
+printer_header_hi:
+        .byte $30                       ; 00
+        .byte $32                       ; 20
+        .byte $34                       ; 40
+        .byte $36                       ; 60
+        .byte $37                       ; 79
+printer_header_lo:
+        .byte $30                       ; 00
+        .byte $30                       ; 20
+        .byte $30                       ; 40
+        .byte $30                       ; 60
+        .byte $39                       ; 79
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
@@ -694,9 +761,9 @@ do_dimmer_0:
         sec
         sbc #15                         ; dimmer_0 = 15.
                                         ; so, change offset to 0
-
+        sta current_dimmer_value
         jsr dimmer_menu_update
-        rts
+        jmp dimmer_perform
 
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
@@ -976,6 +1043,7 @@ menu_song_last_idx:     .byte 0
 menu_dimmer_last_idx:   .byte 0
 menu_alarm_last_idx:    .byte 0
 current_menu:           .byte 0
+current_dimmer_value:   .byte 0
 last_uni_command:       .byte 0
 alarm_enabled:          .byte 0
 VAR_ZERO_TOTAL = * - VAR_ZERO_BEGIN

@@ -36,7 +36,7 @@
   503 print "   "
   504 gosub2000
   505 print a%
-  510 rem:print#3,chr$(16);l$;"."
+  510 print#3,chr$(16);l$;"."
   520 id%=a%/6.22
   530 poke53280,co%(id%)
   540 poke53281,co%(id%)
