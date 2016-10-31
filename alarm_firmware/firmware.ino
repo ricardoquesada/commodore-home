@@ -123,7 +123,7 @@ static void loopSensor()
 
     static bool triggered = false;
 
-    delay(50);
+    delay(1);
 
     // threshold 100 looks Ok
     if (d < 100)
@@ -141,7 +141,6 @@ static void loopSensor()
             packetBuffer[3] = 22;                           // 22 = Trigger alarm
             __udp.beginPacket(__uniIPAddress, UNI_PORT);    // unijoysticle port
             __udp.write(packetBuffer, 4);
-            __udp.write(packetBuffer, 4);                   // send it twice
             __udp.endPacket();
 
             triggered = true;
@@ -157,7 +156,6 @@ static void loopSensor()
             packetBuffer[2] = 0;
             packetBuffer[3] = 0;           // 0 = Do nothing. but clean, the ports
             __udp.beginPacket(__uniIPAddress, UNI_PORT); // unijoysticle port
-            __udp.write(packetBuffer, 4);
             __udp.write(packetBuffer, 4);
             __udp.endPacket();
             Serial.println("Door closed");
@@ -340,16 +338,18 @@ static void readIPAddress(char* ipAddress)
             break;
     }
 
-    Serial.printf("Ip Address: %s\n", ipAddress);
+    Serial.printf("UniJoystiCle Ip Address: %s\n", ipAddress);
 }
 
-static void setIPAddress(const String& ipaddress)
+static void setUniIPAddress(const String& ipaddress)
 {
     int idx=128;
-    for(int i=0;ipaddress.length(); i++) {
+    for(int i=0;i<ipaddress.length(); i++) {
         EEPROM.write(idx++, ipaddress[i]);
     }
     EEPROM.write(idx, 0);
+    EEPROM.commit();
+    __uniIPAddress.fromString(ipaddress);
 }
 
 static void saveCredentials(const String& ssid, const String& pass)
@@ -450,7 +450,8 @@ void createWebServer()
 <h2>Stats</h2>
 <ul>
  <li>Firmware: %s</li>
- <li>IP Address: %d.%d.%d.%d</li>
+ <li>Local IP Address: %d.%d.%d.%d</li>
+ <li>UniJoystiCle IP Address: %d.%d.%d.%d</li>
  <li>SSID: %s</li>
  <li>Chip ID: %d</li>
  <li>Last reset reason: %s</li>
@@ -517,6 +518,7 @@ void createWebServer()
         snprintf(buf, sizeof(buf)-1, htmlraw,
                  COMMODORE_HOME_ALARM_VERSION,
                  __localIPAddress[0], __localIPAddress[1], __localIPAddress[2], __localIPAddress[3],
+                 __uniIPAddress[0], __uniIPAddress[1], __uniIPAddress[2], __uniIPAddress[3],
                  WiFi.SSID().c_str(),
                  ESP.getChipId(),
                  ESP.getResetReason().c_str(),
@@ -555,7 +557,7 @@ void createWebServer()
 
     __settingsServer.on("/ipaddress", []() {
         String arg = __settingsServer.arg("ipaddress");
-        setIPAddress(arg);
+        setUniIPAddress(arg);
         __settingsServer.send(200, "text/html", htmlredirectok);
     });
 
