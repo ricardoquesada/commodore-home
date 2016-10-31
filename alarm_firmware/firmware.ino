@@ -121,29 +121,36 @@ static void loopSensor()
     char buf[100];
     int d = analogRead(A0);
 
-    static bool activated = false;
+    static bool triggered = false;
+
+    delay(50);
 
     // threshold 100 looks Ok
-    if (d < 100) {
-        // Protocol v2
-        // packetBuffer[0] = version
-        // packetBuffer[1] = ports enabled
-        // packetBuffer[2] = joy1
-        // packetBuffer[3] = joy2
+    if (d < 100)
+    {
+        if (!triggered) {
+            // Protocol v2
+            // packetBuffer[0] = version
+            // packetBuffer[1] = ports enabled
+            // packetBuffer[2] = joy1
+            // packetBuffer[3] = joy2
 
-        packetBuffer[0] = 2;
-        packetBuffer[1] = 3;
-        packetBuffer[2] = 0;
-        packetBuffer[3] = 22;                   // 22 = Trigger alarm
-        __udp.beginPacket(__uniIPAddress, UNI_PORT);   // unijoysticle port
-        __udp.write(packetBuffer, 4);
-        __udp.endPacket();
+            packetBuffer[0] = 2;
+            packetBuffer[1] = 3;
+            packetBuffer[2] = 0;
+            packetBuffer[3] = 22;                           // 22 = Trigger alarm
+            __udp.beginPacket(__uniIPAddress, UNI_PORT);    // unijoysticle port
+            __udp.write(packetBuffer, 4);
+            __udp.write(packetBuffer, 4);                   // send it twice
+            __udp.endPacket();
 
-        activated = true;
-    } else {
-        // door closed, but was previously activated ?
-        if (activated) {
-            activated = false;
+            triggered = true;
+            Serial.println("Door open");
+        }
+    } else if (d > 700) {
+        // door closed, but was previously triggered ?
+        if (triggered) {
+            triggered = false;
 
             packetBuffer[0] = 2;
             packetBuffer[1] = 3;
@@ -151,7 +158,9 @@ static void loopSensor()
             packetBuffer[3] = 0;           // 0 = Do nothing. but clean, the ports
             __udp.beginPacket(__uniIPAddress, UNI_PORT); // unijoysticle port
             __udp.write(packetBuffer, 4);
+            __udp.write(packetBuffer, 4);
             __udp.endPacket();
+            Serial.println("Door closed");
         }
     }
 }
