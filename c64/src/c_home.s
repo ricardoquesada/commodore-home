@@ -23,7 +23,9 @@
 .import song_1_eod, song_2_eod, song_3_eod, song_4_eod
 .import song_5_eod, song_6_eod, song_7_eod, song_8_eod
 .import mainscreen_charset_exo, mainscreen_map_exo
-.import paln_freq_table_lo, paln_freq_table_hi
+.import paln_freq_table_lo, paln_freq_table_hi, ntsc_freq_table_lo, ntsc_freq_table_hi
+.import ut_vic_video_type
+
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 ; Constants
@@ -56,23 +58,11 @@
         sta $d020
         sta $d021
 
-        lda #$7f                        ; turn off cia interrups
-        sta $dc0d
-        sta $dd0d
-
-        lda $dc0d                       ; clear interrupts and ACK irq
-        lda $dd0d
-        asl $d019
-
         lda #$00                        ; turn off volume
         sta SID_Amp
                                         ; multicolor mode + extended color causes
 
-        ldx #<irq_vector
-        ldy #>irq_vector
-        stx $fffe
-        sty $ffff
-
+        jsr init_interrupts
         jsr init_screen
         jsr init_vars
 
@@ -197,6 +187,49 @@ end:
         tax
         pla
         rti                             ; restores previous PC, status
+.endproc
+
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; init_interrupts
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.proc init_interrupts
+        lda #$7f                        ; turn off cia interrups
+        sta $dc0d
+        sta $dd0d
+
+        lda $dc0d                       ; clear interrupts and ACK irq
+        lda $dd0d
+        asl $d019
+
+        ldx #<irq_vector
+        ldy #>irq_vector
+        stx $fffe
+        sty $ffff
+
+                                        ; setup speed for timer
+        ldx #<$4cc7                     ; default: PAL
+        ldy #>$4cc7
+
+        lda ut_vic_video_type
+        cmp #$01                        ; PAL?
+        beq store
+        cmp #$2f                        ; PAL-N?
+        beq do_paln
+
+do_ntsc:                                ; fall through: NTSC
+        ldx #<$4fb2
+        ldy #>$4fb2
+        bne store
+
+do_paln:
+        ldx #<$4fc1
+        ldy #>$4fc1
+
+store:
+        stx $dc04
+        sty $dc05
+
+        rts
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
@@ -557,7 +590,7 @@ boot = *
         ; A = $04 (FILE NOT FOUND)
         ; A = $1D (LOAD ERROR)
         ; A = $00 (BREAK, RUN/STOP has been pressed during loading)
-        
+
         lda #3
         jsr $ffc3                       ; call CLOSE
 
@@ -879,7 +912,8 @@ l0:
 
         lda #$7f                        ; turn off cia interrups
         sta $dc0d
-        lda #$00
+
+        lda #$00                        ; no volume
         sta SID_Amp
 
         lda current_song                ; x = current_song * 2
@@ -904,11 +938,7 @@ l0:
 
         inc $01                         ; $35: RAM + IO ($D000-$DF00)
 
-
-        ldx #<$4cc7                     ; init timer
-        ldy #>$4cc7                     ; sync with PAL
-        stx $dc04                       ; it plays at 50.125hz
-        sty $dc05                       ; we have to call this everytime
+        jsr update_freq_table
 
         lda #0
         tax
@@ -1043,6 +1073,66 @@ next:
 .endproc
 
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+; void update_freq_table()
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
+.proc update_freq_table
+        ;   $01 --> PAL
+        ;   $2F --> PAL-N
+        ;   $28 --> NTSC
+        ;   $2e --> NTSC-OLD
+        lda ut_vic_video_type 
+        cmp #$01                                        ; PAL? don't update it then
+        bne l0
+        rts
+
+l0:
+        cmp #$2f                                        ; PAL-N ?
+        bne l2                                          ; if so, use PAL-N tables
+
+        ldx #<ntsc_freq_table_lo
+        ldy #>ntsc_freq_table_lo
+        stx src_lo
+        sty src_lo+1
+        ldx #<ntsc_freq_table_hi
+        ldy #>ntsc_freq_table_hi
+        stx src_hi
+        sty src_hi+1
+
+
+l2:
+        lda current_song
+        asl
+        tax
+
+        lda song_table_freq_addrs_lo,x
+        sta dst_lo
+        lda song_table_freq_addrs_lo+1,x
+        sta dst_lo+1
+
+        lda song_table_freq_addrs_hi,x
+        sta dst_hi
+        lda song_table_freq_addrs_hi+1,x
+        sta dst_hi+1
+
+
+        ldx #96                                         ; copy one less
+                                                        ; since sidwizard table
+src_lo = *+1                                            ; seems to be moved
+l1:     lda ntsc_freq_table_lo,x
+dst_lo = *+1
+        sta $1000,x                                     ; self modifying
+
+src_hi = *+1
+        lda ntsc_freq_table_hi,x
+dst_hi = *+1
+        sta $1000,x                                     ; self modifying
+
+        dex
+        bpl l1
+
+        rts
+.endproc
+;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 ; variables
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
 VAR_ZERO_BEGIN = *
@@ -1125,7 +1215,7 @@ song_durations:                                 ; measured in "cycles ticks"
         .word (2*60+24) * 50                    ; #7 2:24
         .word (3*60+35) * 50                    ; #8 3:35
 
-song_init_addr:                                 ; measured in "cycles ticks"
+song_init_addr:
         .word $1000
         .word $1000
         .word $1000
@@ -1135,7 +1225,7 @@ song_init_addr:                                 ; measured in "cycles ticks"
         .word $1000
         .word $1000
 
-song_play_addr:                                 ; measured in "cycles ticks"
+song_play_addr:
         .word $1006
         .word $1003
         .word $1003
@@ -1144,6 +1234,30 @@ song_play_addr:                                 ; measured in "cycles ticks"
         .word $0ff3
         .word $1003
         .word $1003
+
+song_table_freq_addrs_lo:
+        .addr $1564
+        .addr $14fd
+        .addr $1635
+        .addr $151b
+        .addr $151b
+        .addr $151b
+        .addr $16ea
+        .addr $17eb
+        .addr $1779
+        .addr $1404                             ; easteregg song
+
+song_table_freq_addrs_hi:
+        .addr $15c4
+        .addr $149d
+        .addr $1695
+        .addr $14bb
+        .addr $14bb
+        .addr $14bb
+        .addr $1682
+        .addr $1783
+        .addr $1711
+        .addr $1464                             ; easteregg song
 
 screen_colors:
         .incbin "mainscreen-colors.bin"
