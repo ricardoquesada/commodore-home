@@ -1,0 +1,12 @@
+CommodoreDimmerIntent lights to {percent} percent
+CommodoreDimmerIntent lights to {percent}
+CommodoreDimmerIntent dimmer {percent}
+CommodoreDimmerIntent dimmer {percent} percent
+CommodoreDimmerIntent set dimmer to {percent} percent
+CommodoreDimmerIntent set dimmer to {percent}
+
+CommodoreAlarmIntent {alarm_state} alarm
+CommodoreAlarmIntent alarm {alarm_state}
+
+CommodorePlayerIntent play {song_number}
+CommodorePlayerIntent song {song_number}

@@ -1,0 +1,18 @@
+welcome: |
+    <speak>
+        Welcome to Commodore Home.
+        <audio src='http://remix.kwed.org/files/RKOfiles/LukHash%20-%20Giana%20Sisters%20-%20Live%20PO28%20[Youtube%20Vid]%20.mp3'/>
+    </speak>
+
+help: |
+        Add here something useful
+
+reprompt: Which song number should I play?
+
+bye: Goodbye
+
+do_player: Playing song {{ song_number }}
+
+do_dimmer: Setting dimmer to {{ dimmer_value }} percent
+
+do_alarm: Setting alarm to {{ alarm_state }}

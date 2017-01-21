@@ -1,0 +1,38 @@
+{
+  "intents": [
+    {
+      "intent": "AMAZON.HelpIntent"
+    },
+    {
+      "intent": "AMAZON.StopIntent"
+    },
+    {
+      "intent": "CommodoreAlarmIntent",
+      "slots": [
+        {
+      	  "name": "alarm_state",
+          "type": "ALARM_STATE"
+	    }
+      ]
+    },
+    {
+      "intent": "CommodoreDimmerIntent",
+      "slots": [
+        {
+          "name": "percent",
+          "type": "AMAZON.NUMBER"
+        }
+      ]
+    },
+    {
+      "intent": "CommodorePlayerIntent",
+      "slots": [
+        {
+          "name": "song_number",
+          "type": "AMAZON.NUMBER"
+        }
+      ]
+    }
+  ]
+}
+
