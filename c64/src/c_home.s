@@ -801,7 +801,7 @@ do_dimmer_0:
         tya                             ; Y = current command
 
         sec
-        sbc #15                         ; dimmer_0 = 15.
+        sbc #17                         ; dimmer_0 = 17.
                                         ; so, change offset to 0
         sta current_dimmer_value
         jsr dimmer_menu_update
