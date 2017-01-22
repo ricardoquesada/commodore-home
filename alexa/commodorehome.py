@@ -18,7 +18,7 @@ app = Flask(__name__)
 ask = Ask(app, "/")
 logging.getLogger('flask_ask').setLevel(logging.DEBUG)
 
-UNIJOYSTICLE_IP = '10.0.0.15'
+UNIJOYSTICLE_IP = '10.0.0.27'
 
 
 @ask.launch
