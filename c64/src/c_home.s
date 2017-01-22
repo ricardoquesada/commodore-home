@@ -23,7 +23,9 @@
 .import song_1_eod, song_2_eod, song_3_eod, song_4_eod
 .import song_5_eod, song_6_eod, song_7_eod, song_8_eod
 .import mainscreen_charset_exo, mainscreen_map_exo
-.import paln_freq_table_lo, paln_freq_table_hi, ntsc_freq_table_lo, ntsc_freq_table_hi
+.import palb_freq_table_lo, palb_freq_table_hi
+.import paln_freq_table_lo, paln_freq_table_hi
+.import ntsc_freq_table_lo, ntsc_freq_table_hi
 .import ut_vic_video_type
 
 
@@ -742,9 +744,9 @@ play_next_note:
         lda notes
 play:
         tay
-        lda paln_freq_table_lo,y
+        lda palb_freq_table_lo,y
         sta SID_S1Lo
-        lda paln_freq_table_hi,y
+        lda palb_freq_table_hi,y
         sta SID_S1Hi
         lda #17                         ; Gate sawtooth
         sta SID_Ctl1
@@ -1083,12 +1085,23 @@ next:
         lda ut_vic_video_type 
         cmp #$01                                        ; PAL? don't update it then
         bne l0
-        rts
+
+        ldx #<palb_freq_table_lo                        ; PAL
+        ldy #>palb_freq_table_lo                        ; Patch song anyway
+        stx src_lo                                      ; since some songs have the NTSC table... why?
+        sty src_lo+1
+        ldx #<palb_freq_table_hi
+        ldy #>palb_freq_table_hi
+        stx src_hi
+        sty src_hi+1
+        jmp patch_it
 
 l0:
-        cmp #$2f                                        ; PAL-N ?
-        bne l2                                          ; if so, use PAL-N tables
-
+        cmp #$28                                        ; NTSC ?
+        bne @ntsc                                       ; if so, use NTSC tables
+@ntsc:
+        cmp #$2e
+        bne l1
         ldx #<ntsc_freq_table_lo
         ldy #>ntsc_freq_table_lo
         stx src_lo
@@ -1097,10 +1110,28 @@ l0:
         ldy #>ntsc_freq_table_hi
         stx src_hi
         sty src_hi+1
+        jmp patch_it
 
 
-l2:
+l1:
+        cmp #$2f                                        ; PAL-N ?
+        bne patch_it                                    ; if so, use PAL-N tables
+
+        ldx #<paln_freq_table_lo
+        ldy #>paln_freq_table_lo
+        stx src_lo
+        sty src_lo+1
+        ldx #<paln_freq_table_hi
+        ldy #>paln_freq_table_hi
+        stx src_hi
+        sty src_hi+1
+
+
+patch_it:
         lda current_song
+        cmp #3                                          ; Jump song? Don't patch
+        beq end
+
         asl
         tax
 
@@ -1115,10 +1146,10 @@ l2:
         sta dst_hi+1
 
 
-        ldx #96                                         ; copy one less
+        ldx #95                                         ; copy one less
                                                         ; since sidwizard table
 src_lo = *+1                                            ; seems to be moved
-l1:     lda ntsc_freq_table_lo,x
+l2:     lda ntsc_freq_table_lo,x
 dst_lo = *+1
         sta $1000,x                                     ; self modifying
 
@@ -1128,8 +1159,9 @@ dst_hi = *+1
         sta $1000,x                                     ; self modifying
 
         dex
-        bpl l1
+        bpl l2
 
+end:
         rts
 .endproc
 ;=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-;
@@ -1239,25 +1271,22 @@ song_table_freq_addrs_lo:
         .addr $1564
         .addr $14fd
         .addr $1635
-        .addr $151b
-        .addr $151b
-        .addr $151b
-        .addr $16ea
-        .addr $17eb
-        .addr $1779
-        .addr $1404                             ; easteregg song
+        .addr $0000                             ; not found in Jump
+        .addr $10d9
+        .addr $18ed
+        .addr $1647
+        .addr $170f
+
 
 song_table_freq_addrs_hi:
         .addr $15c4
         .addr $149d
         .addr $1695
-        .addr $14bb
-        .addr $14bb
-        .addr $14bb
-        .addr $1682
-        .addr $1783
-        .addr $1711
-        .addr $1464                             ; easteregg song
+        .addr $0000                             ; not found in Jump
+        .addr $113a
+        .addr $194d
+        .addr $16a7
+        .addr $176f
 
 screen_colors:
         .incbin "mainscreen-colors.bin"
