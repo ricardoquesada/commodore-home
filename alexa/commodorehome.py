@@ -41,7 +41,7 @@ def do_alarm(alarm_state):
     on = ('on', 'enable', 'enabled')
     off = ('off', 'disable', 'disabled')
 
-    if alarm_state in on:
+    if alarm_state.lower() in on:
         uniclient.send_packet_v2(UNIJOYSTICLE_IP, 2, 0, CommodoreHome.ALARM_ON)
     else:
         uniclient.send_packet_v2(UNIJOYSTICLE_IP, 2, 0, CommodoreHome.ALARM_OFF)

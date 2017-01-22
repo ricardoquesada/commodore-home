@@ -1,8 +1,5 @@
 welcome: |
-    <speak>
         Welcome to Commodore Home.
-        <audio src='http://remix.kwed.org/files/RKOfiles/LukHash%20-%20Giana%20Sisters%20-%20Live%20PO28%20[Youtube%20Vid]%20.mp3'/>
-    </speak>
 
 help: |
         Add here something useful

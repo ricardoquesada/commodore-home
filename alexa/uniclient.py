@@ -55,6 +55,13 @@ def discover_devices(callback):
     pass
 
 def send_packet_v2(ipaddress, port, joyvalue1, joyvalue2):
+    _send_packet_v2(ipaddress, port, joyvalue1, joyvalue2)
+    time.sleep(0.2)
+    _send_packet_v2(ipaddress, port, joyvalue1, joyvalue2)
+#    time.sleep(0.016)
+#    _send_packet_v2(ipaddress, 3, 0, 0)
+
+def _send_packet_v2(ipaddress, port, joyvalue1, joyvalue2):
 
     joyvalue1 = int(joyvalue1)
     joyvalue2 = int(joyvalue2)
@@ -70,9 +77,11 @@ def send_packet_v2(ipaddress, port, joyvalue1, joyvalue2):
                          socket.SOCK_DGRAM) # UDP
 
     # send it twice... since it is UDP it might fail
-    sock.sendto(message, (ipaddress, UDP_PORT))
-    time.sleep(0.1)
-    sock.sendto(message, (ipaddress, UDP_PORT))
+    for i in range(1):
+        time.sleep(0.005)
+        sock.sendto(message, (ipaddress, UDP_PORT))
+#    time.sleep(0.005)
+#    sock.sendto(message, (ipaddress, UDP_PORT))
 
 def send_packet_v3(ipaddress, port, joyvalue1, pot1x=0, pot1y=0):
 
