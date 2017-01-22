@@ -33,6 +33,10 @@
         {
           "name": "song_number",
           "type": "AMAZON.NUMBER"
+        },
+        {
+          "name": "song_name",
+          "type": "LIST_OF_SONGS"
         }
       ]
     }

@@ -11,11 +11,14 @@ from flask import Flask, json, render_template
 from flask_ask import Ask, request, session, question, statement
 
 import uniclient
+from uniclient import CommodoreHome
 
 
 app = Flask(__name__)
 ask = Ask(app, "/")
 logging.getLogger('flask_ask').setLevel(logging.DEBUG)
+
+UNIJOYSTICLE_IP = '10.0.0.15'
 
 
 @ask.launch
@@ -39,9 +42,9 @@ def do_alarm(state):
     off = ('off', 'disable', 'disabled')
 
     if state in on:
-        uniclient.send_packet_v2('10.0.0.15', 2, CommdoreHome.ALARM_ON)
+        uniclient.send_packet_v2(UNIJOYSTICLE_IP, 2, 0, CommodoreHome.ALARM_ON)
     else:
-        uniclient.send_packet_v2('10.0.0.15', 2, CommdoreHome.ALARM_OFF)
+        uniclient.send_packet_v2(UNIJOYSTICLE_IP, 2, 0, CommodoreHome.ALARM_OFF)
 
     statement_text = render_template('do_alarm', alarm_state=state)
     return statement(statement_text).simple_card("Commodore Home", statement_text)
@@ -55,19 +58,33 @@ def do_dimmer(percent):
     off = ('off', 'disable', 'disabled')
 
     if state in on:
-        uniclient.send_packet_v2('10.0.0.15', 2, CommdoreHome.ALARM_ON)
+        uniclient.send_packet_v2(UNIJOYSTICLE_IP, 2, 0, CommodoreHome.ALARM_ON)
     else:
-        uniclient.send_packet_v2('10.0.0.15', 2, CommdoreHome.ALARM_OFF)
+        uniclient.send_packet_v2(UNIJOYSTICLE_IP, 2, 0, CommodoreHome.ALARM_OFF)
     statement_text = render_template('do_dimmer', dimmer_value=percent)
     return statement(statement_text).simple_card("Commodore Home", statement_text)
 
 
 @ask.intent('CommodorePlayerIntent',
-    mapping={'number': 'song_number'},
-    default={'number': '0'}
+    mapping={'song_number': 'song_number', 'song_name': 'song_name'},
+    default={'song_number': None, 'song_name': None}
     )
-def do_player(number):
-    statement_text = render_template('do_player', song_number=number)
+def do_player(song_number, song_name):
+    songs = ('ashes', 'final', 'world', 'jump', 'enola', 'jean', 'paradise', 'change', 'breath')
+    if song_number is None and song_name is None:
+        statement_text = render_template('error_player')
+    elif song_name is not None:
+        song_number = -1
+        for idx,s in enumerate(songs):
+            song_name = song_name.lower()
+            if song_name.find(s) != -1:
+                song_number = idx + 1
+                break
+        if song_number == -1:
+            statement_text = render_template('error_player')
+        else:
+            uniclient.send_packet_v2(UNIJOYSTICLE_IP, 2, 0, CommodoreHome.SONG_0 + song_number - 1)
+            statement_text = render_template('do_player', song_number=song_number)
     return statement(statement_text).simple_card("Commodore Home", statement_text)
 
 

@@ -21,6 +21,8 @@ class CommodoreHome:
     SONG_5,         \
     SONG_6,         \
     SONG_7,         \
+    SONG_8,         \
+    _,              \
     SONG_STOP,      \
     SONG_PLAY,      \
     SONG_PAUSE,     \
@@ -34,8 +36,6 @@ class CommodoreHome:
     ALARM_OFF,      \
     ALARM_ON,       \
     ALARM_TRIGGER,  \
-    _,              \
-    _,              \
     _,              \
     _,              \
     _,              \

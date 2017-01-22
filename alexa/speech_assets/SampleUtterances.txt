@@ -10,6 +10,7 @@ CommodoreAlarmIntent alarm {alarm_state}
 
 CommodorePlayerIntent play {song_number}
 CommodorePlayerIntent song {song_number}
+CommodorePlayerIntent play {song_name}
 
 CommodoreGianaIntent play giana
 CommodoreGianaIntent do giana
