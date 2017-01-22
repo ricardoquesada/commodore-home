@@ -4,10 +4,11 @@ import socket
 import sys
 import struct
 import os
+import time
 
 UDP_PORT = 6464
 
-DEBUG = 0
+DEBUG = 1
 
 # Commodore Home Commands
 
@@ -31,6 +32,7 @@ class CommodoreHome:
     SONG_PREV,      \
     DIMMER_0,       \
     DIMMER_25,      \
+    DIMMER_50,      \
     DIMMER_75,      \
     DIMMER_100,     \
     ALARM_OFF,      \
@@ -42,8 +44,8 @@ class CommodoreHome:
     _,              \
     _,              \
     _,              \
-    _ = range(31)
-    
+    _ = range(32)
+
 
 def log(mesg):
     if DEBUG is not 0:
@@ -54,17 +56,22 @@ def discover_devices(callback):
 
 def send_packet_v2(ipaddress, port, joyvalue1, joyvalue2):
 
-    log("target IP/Port %s/%d" % (ipaddress, UDP_PORT))
-
     joyvalue1 = int(joyvalue1)
     joyvalue2 = int(joyvalue2)
     port = int(port)
 
-    log("Sending to control port:%d  joy=%d joy=%d" % (port, joyvalue1, joyvalue2))
-
     message = struct.pack("BBBB", 2, port, joyvalue1, joyvalue2)
+
+    log("target IP/Port %s/%d" % (ipaddress, UDP_PORT))
+    log("Sending to control port:%d  joy=%d joy=%d" % (port, joyvalue1, joyvalue2))
+    log(message)
+
     sock = socket.socket(socket.AF_INET, # Internet
                          socket.SOCK_DGRAM) # UDP
+
+    # send it twice... since it is UDP it might fail
+    sock.sendto(message, (ipaddress, UDP_PORT))
+    time.sleep(0.1)
     sock.sendto(message, (ipaddress, UDP_PORT))
 
 def send_packet_v3(ipaddress, port, joyvalue1, pot1x=0, pot1y=0):

@@ -8,10 +8,8 @@ CommodoreDimmerIntent set dimmer to {percent}
 CommodoreAlarmIntent {alarm_state} alarm
 CommodoreAlarmIntent alarm {alarm_state}
 
-CommodorePlayerIntent play {song_number}
-CommodorePlayerIntent song {song_number}
+CommodorePlayerIntent play song number {song_number}
+CommodorePlayerIntent play number {song_number}
 CommodorePlayerIntent play {song_name}
 
-CommodoreGianaIntent play giana
 CommodoreGianaIntent do giana
-CommodoreGianaIntent giana song

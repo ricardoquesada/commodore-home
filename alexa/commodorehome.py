@@ -35,18 +35,18 @@ def do_giana(state):
 
 
 @ask.intent('CommodoreAlarmIntent',
-    mapping={'state': 'alarm_state'}
+    mapping={'alarm_state': 'alarm_state'}
         )
-def do_alarm(state):
+def do_alarm(alarm_state):
     on = ('on', 'enable', 'enabled')
     off = ('off', 'disable', 'disabled')
 
-    if state in on:
+    if alarm_state in on:
         uniclient.send_packet_v2(UNIJOYSTICLE_IP, 2, 0, CommodoreHome.ALARM_ON)
     else:
         uniclient.send_packet_v2(UNIJOYSTICLE_IP, 2, 0, CommodoreHome.ALARM_OFF)
 
-    statement_text = render_template('do_alarm', alarm_state=state)
+    statement_text = render_template('do_alarm', alarm_state=alarm_state)
     return statement(statement_text).simple_card("Commodore Home", statement_text)
 
 
@@ -54,13 +54,10 @@ def do_alarm(state):
     mapping={'percent': 'percent'}
     )
 def do_dimmer(percent):
-    on = ('on', 'enable', 'enabled')
-    off = ('off', 'disable', 'disabled')
-
-    if state in on:
-        uniclient.send_packet_v2(UNIJOYSTICLE_IP, 2, 0, CommodoreHome.ALARM_ON)
+    if percent < 50:
+        uniclient.send_packet_v2(UNIJOYSTICLE_IP, 2, 0, CommodoreHome.DIMMER_0)
     else:
-        uniclient.send_packet_v2(UNIJOYSTICLE_IP, 2, 0, CommodoreHome.ALARM_OFF)
+        uniclient.send_packet_v2(UNIJOYSTICLE_IP, 2, 0, CommodoreHome.DIMMER_100)
     statement_text = render_template('do_dimmer', dimmer_value=percent)
     return statement(statement_text).simple_card("Commodore Home", statement_text)
 
@@ -71,6 +68,7 @@ def do_dimmer(percent):
     )
 def do_player(song_number, song_name):
     songs = ('ashes', 'final', 'world', 'jump', 'enola', 'jean', 'paradise', 'change', 'breath')
+
     if song_number is None and song_name is None:
         statement_text = render_template('error_player')
     elif song_name is not None:
@@ -80,6 +78,11 @@ def do_player(song_number, song_name):
             if song_name.find(s) != -1:
                 song_number = idx + 1
                 break
+
+    if song_number is None:
+        statement_text = render_template('error_player')
+    else:
+        song_number = int(song_number)
         if song_number == -1:
             statement_text = render_template('error_player')
         else:
