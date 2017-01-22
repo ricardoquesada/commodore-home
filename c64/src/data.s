@@ -56,6 +56,10 @@ song_7_eod:
 .export song_8_eod
 song_8_eod:
 
+        .incbin "Take_My_Breath_Away.exo"
+.export song_9_eod
+song_9_eod:
+
         .incbin "mainscreen-map.bin.exo"
 .export mainscreen_map_exo
 mainscreen_map_exo:

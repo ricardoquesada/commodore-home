@@ -21,7 +21,7 @@
 .import menu_handle_events, menu_invert_row, menu_update_current_row
 .import ut_get_key
 .import song_1_eod, song_2_eod, song_3_eod, song_4_eod
-.import song_5_eod, song_6_eod, song_7_eod, song_8_eod
+.import song_5_eod, song_6_eod, song_7_eod, song_8_eod, song_9_eod
 .import mainscreen_charset_exo, mainscreen_map_exo
 .import palb_freq_table_lo, palb_freq_table_hi
 .import paln_freq_table_lo, paln_freq_table_hi
@@ -436,7 +436,7 @@ l1:                                     ; and update the color ram
         jsr menu_invert_row                     ; turn off previous menu
 
 boot = *
-        lda #8                                  ; setup the global variables
+        lda #9                                  ; setup the global variables
         sta MENU_MAX_ITEMS                      ; needed for the menu code
         lda #25
         sta MENU_ITEM_LEN
@@ -821,6 +821,7 @@ do_song_4:
 do_song_5:
 do_song_6:
 do_song_7:
+do_song_8:
         dey                             ; songs are "command - 1"
         sty current_song
 
@@ -980,7 +981,7 @@ music_init_addr = * + 1
         lda #24
         sta $fd                         ; item lenght
 
-        lda #8
+        lda #9                          ; total items
         sta $fe
 
         jmp update_menu_arrows
@@ -1198,22 +1199,22 @@ uni_commands:
         .addr do_song_5                 ; 6
         .addr do_song_6                 ; 7
         .addr do_song_7                 ; 8
-        .addr do_song_stop              ; 9
-        .addr do_song_play              ; 10
-        .addr do_song_pause             ; 11
-        .addr do_song_resume            ; 12
-        .addr do_song_next              ; 13
-        .addr do_song_prev              ; 14
-        .addr do_dimmer_0               ; 15
-        .addr do_dimmer_25              ; 16
-        .addr do_dimmer_50              ; 17
-        .addr do_dimmer_75              ; 18
-        .addr do_dimmer_100             ; 19
-        .addr do_alarm_off              ; 20
-        .addr do_alarm_on               ; 21
-        .addr do_alarm_trigger          ; 22
-        .addr do_nothing                ; 23
-        .addr do_nothing                ; 24
+        .addr do_song_8                 ; 9
+        .addr do_nothing                ; 10
+        .addr do_song_stop              ; 11
+        .addr do_song_play              ; 12
+        .addr do_song_pause             ; 13
+        .addr do_song_resume            ; 14
+        .addr do_song_next              ; 15
+        .addr do_song_prev              ; 16
+        .addr do_dimmer_0               ; 17
+        .addr do_dimmer_25              ; 18
+        .addr do_dimmer_50              ; 19
+        .addr do_dimmer_75              ; 20
+        .addr do_dimmer_100             ; 21
+        .addr do_alarm_off              ; 22
+        .addr do_alarm_on               ; 23
+        .addr do_alarm_trigger          ; 24
         .addr do_nothing                ; 25
         .addr do_nothing                ; 26
         .addr do_nothing                ; 27
@@ -1234,6 +1235,7 @@ song_end_addrs:
         .addr song_6_eod
         .addr song_7_eod
         .addr song_8_eod
+        .addr song_9_eod
 TOTAL_SONGS = (* - song_end_addrs) / 2
 
 ; Ashes to Ashes:  3:43
@@ -1244,6 +1246,7 @@ TOTAL_SONGS = (* - song_end_addrs) / 2
 ; Billie Jean: 3:58
 ; Another Day In Paradise: 2:24
 ; Wind of Change: 3:35
+; Take My Breath Away: 2:34
 song_durations:                                 ; measured in "cycles ticks"
         .word (3*60+43) * 50                    ; #1 3:43
         .word (3*60+09) * 50                    ; #2 3:09
@@ -1253,6 +1256,7 @@ song_durations:                                 ; measured in "cycles ticks"
         .word (3*60+58) * 50                    ; #6 3:58
         .word (2*60+24) * 50                    ; #7 2:24
         .word (3*60+35) * 50                    ; #8 3:35
+        .word (2*60+34) * 50                    ; #9 2:34
 
 song_init_addr:
         .word $1000
@@ -1261,6 +1265,7 @@ song_init_addr:
         .word $1000
         .word $1000
         .word $0fe0
+        .word $1000
         .word $1000
         .word $1000
 
@@ -1273,6 +1278,7 @@ song_play_addr:
         .word $0ff3
         .word $1003
         .word $1003
+        .word $1003
 
 song_table_freq_addrs_lo:
         .addr $1564
@@ -1283,6 +1289,7 @@ song_table_freq_addrs_lo:
         .addr $18ed
         .addr $1647
         .addr $170f
+        .addr $191c
 
 
 song_table_freq_addrs_hi:
@@ -1294,6 +1301,7 @@ song_table_freq_addrs_hi:
         .addr $194d
         .addr $16a7
         .addr $176f
+        .addr $18bd
 
 screen_colors:
         .incbin "mainscreen-colors.bin"

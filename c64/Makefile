@@ -13,6 +13,7 @@ data:
 	-cp res/mainscreen-colors.bin src/
 	-cp res/alarm-map.bin src/
 	-cp res/sprites.bin src/
+	-cp res/sids/*.exo src/
 	-exomizer mem -o src/mainscreen-map.bin.exo res/mainscreen-map.prg
 	-exomizer mem -o src/mainscreen-charset.bin.exo res/mainscreen-charset.prg
 	-exomizer mem -o src/intro-charset.bin.exo res/intro-charset.prg
