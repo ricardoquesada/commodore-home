@@ -3,9 +3,9 @@
 .PHONY: all clean res run
 
 X64 = x64
+D64_IMAGE = "bin/commodore_home.d64"
 
-all: data bin
-bin: c_home run
+all: data c_home d64 run
 
 SRC=src/intro.s src/c_home.s src/exodecrunch.s src/menu.s src/utils.s src/data.s src/music_table.s
 
@@ -28,6 +28,12 @@ c_home: ${SRC}
 run:
 	echo "Running game"
 	$(X64) -verbose -moncommands bin/c_home.sym bin/c_home.prg
+
+d64:
+	echo "Generating d64 file..."
+	$(C1541) -format "commodore home,rq" d64 $(D64_IMAGE)
+	$(C1541) $(D64_IMAGE) -write bin/c_home.prg "commodore home"
+	$(C1541) $(D64_IMAGE) -list
 
 clean:
 	rm -f bin/*.sym src/*.o
