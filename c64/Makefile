@@ -10,7 +10,7 @@ bin: c_home run
 SRC=src/intro.s src/c_home.s src/exodecrunch.s src/menu.s src/utils.s src/data.s src/music_table.s
 
 data:
-	-cp res/mainscreen-*.bin src/
+	-cp res/mainscreen-colors.bin src/
 	-cp res/alarm-map.bin src/
 	-cp res/sprites.bin src/
 	-exomizer mem -o src/mainscreen-map.bin.exo res/mainscreen-map.prg

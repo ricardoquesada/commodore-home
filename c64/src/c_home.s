@@ -946,8 +946,15 @@ l0:
         tax
         tay
 music_init_addr = * + 1
-        jsr MUSIC_INIT
+        jsr MUSIC_INIT                  ; it might modify the CIA interrupt
 
+        lda current_song
+        cmp #5                          ; Billie Jean does its own interrupt thing
+        beq @l0
+
+        jsr init_interrupts             ; update CIA interrupts again
+
+@l0:
         lda #$81                        ; turn on cia interrups
         sta $dc0d
 
@@ -1146,8 +1153,8 @@ patch_it:
         sta dst_hi+1
 
 
-        ldx #95                                         ; copy one less
-                                                        ; since sidwizard table
+        ldx #95
+
 src_lo = *+1                                            ; seems to be moved
 l2:     lda ntsc_freq_table_lo,x
 dst_lo = *+1
