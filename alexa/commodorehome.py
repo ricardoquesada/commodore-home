@@ -1,12 +1,6 @@
 import os
 import logging
-import datetime
-import math
-import re
-from six.moves.urllib.request import urlopen
-from six.moves.urllib.parse import urlencode
 
-import aniso8601
 from flask import Flask, json, render_template
 from flask_ask import Ask, request, session, question, statement
 
