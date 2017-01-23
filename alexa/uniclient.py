@@ -58,8 +58,8 @@ def send_packet_v2(ipaddress, port, joyvalue1, joyvalue2):
     _send_packet_v2(ipaddress, port, joyvalue1, joyvalue2)
     time.sleep(0.2)
     _send_packet_v2(ipaddress, port, joyvalue1, joyvalue2)
-#    time.sleep(0.016)
-#    _send_packet_v2(ipaddress, 3, 0, 0)
+    time.sleep(0.3)
+    _send_packet_v2(ipaddress, 3, 0, 0)
 
 def _send_packet_v2(ipaddress, port, joyvalue1, joyvalue2):
 

@@ -48,10 +48,8 @@ def do_alarm(alarm_state):
     mapping={'percent': 'percent'}
     )
 def do_dimmer(percent):
-    if percent < 50:
-        uniclient.send_packet_v2(UNIJOYSTICLE_IP, 2, 0, CommodoreHome.DIMMER_0)
-    else:
-        uniclient.send_packet_v2(UNIJOYSTICLE_IP, 2, 0, CommodoreHome.DIMMER_100)
+    percent = int(percent) / 25
+    uniclient.send_packet_v2(UNIJOYSTICLE_IP, 2, 0, CommodoreHome.DIMMER_0 + percent)
     statement_text = render_template('do_dimmer', dimmer_value=percent)
     return statement(statement_text).simple_card("Commodore Home", statement_text)
 
