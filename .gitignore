@@ -35,3 +35,5 @@
 *~
 *.swp
 
+# Python
+*.pyc
