@@ -11,6 +11,11 @@ from flask import Flask
 from flask import request
 from flask import make_response
 
+import uniclient
+from uniclient import CommodoreHome
+
+UNIJOYSTICLE_IP = '10.0.0.27'
+
 # Flask app should start in global layout
 app = Flask(__name__)
 
@@ -31,20 +36,47 @@ def webhook():
     return r
 
 def action_alarm_setting(req):
-    print('alarm')
-    return {'alarm': True}
+    on = ('on', 'enable', 'enabled')
+    off = ('off', 'disable', 'disabled')
+
+    if alarm_state.lower() in on:
+        uniclient.send_packet_v2(UNIJOYSTICLE_IP, 2, 0, CommodoreHome.ALARM_ON)
+    else:
+        uniclient.send_packet_v2(UNIJOYSTICLE_IP, 2, 0, CommodoreHome.ALARM_OFF)
 
 def action_dimmer_setting(req):
-    print('dimmer')
-    return {'dimmer': True}
+    percent = int(percent) / 25
+    uniclient.send_packet_v2(UNIJOYSTICLE_IP, 2, 0, CommodoreHome.DIMMER_0 + percent)
 
 def action_joystick_movement(req):
     print('joy')
     return {'joystick': True}
 
 def action_play_music(req):
-    print('music')
-    return {'music': True}
+    songs = ('ashes', 'final', 'world', 'jump', 'enola', 'jean', 'paradise', 'change', 'breath')
+
+    parameters = req.get('result').get('parameters')
+    song_number = parameters.get('song_number')
+    song_name = parameters.get('song_name')
+
+    if song_number is None and song_name is None:
+        statement_text = render_template('error_player')
+    elif song_name is not None:
+        song_number = -1
+        for idx,s in enumerate(songs):
+            song_name = song_name.lower()
+            if song_name.find(s) != -1:
+                song_number = idx + 1
+                break
+
+    if song_number is None:
+        statement_text = render_template('error_player')
+    else:
+        song_number = int(song_number)
+        if song_number == -1:
+            statement_text = render_template('error_player')
+        else:
+            uniclient.send_packet_v2(UNIJOYSTICLE_IP, 2, 0, CommodoreHome.SONG_0 + song_number - 1)
 
 def processRequest(req):
     # actions:
